@@ -1,0 +1,23 @@
+name: Docker Image CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build the Docker image
+        run: docker-compose build
+
+      - name: Run test suite
+        run: docker-compose run sealog-server npm test
+
+      - name: Run server
+        run: |
+          docker-compose up -d
+          curl http://localhost:8000/sealog-server > /tmp/banner.txt
+          grep "Welcome to sealog-server\!" /tmp/banner.txt
+          docker-compose down
