@@ -18,6 +18,7 @@ jobs:
       - name: Run server
         run: |
           docker-compose up -d
+          sleep 10
           curl http://localhost:8000/sealog-server > /tmp/banner.txt
           grep "Welcome to sealog-server\!" /tmp/banner.txt
           docker-compose down
