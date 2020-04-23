@@ -1,5 +1,7 @@
 FROM node:12
 
+ENV NODE_ENV production
+
 WORKDIR /usr/src/app
 
 # Install packages
@@ -21,10 +23,7 @@ RUN sed -i \
         -e 's,mongodb://localhost:27017/,mongodb://mongo/,' \
         config/manifest.js
 
-# TODO: Generate a new secret?
-
 # Expose the API port (defined in config/manifest.js)
 EXPOSE 8000
 
-# By default, run in production mode
 CMD [ "npm", "run", "start" ]
