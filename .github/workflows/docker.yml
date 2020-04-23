@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Build
 
 on: [push, pull_request]
 
@@ -8,6 +8,37 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Initialize
+        id: init
+        run: |
+          # Determine whether to push to Docker Hub based on the event type
+          case "${{ github.event_name }}" in
+            push)
+              DOCKER_PUSH=yes ;;
+            *)
+              DOCKER_PUSH=no ;;
+          esac
+
+          # Map git ref branch or tag name to Docker tag version
+          case "${{ github.ref }}" in
+            # Do not push upstream branches and tags to Docker Hub
+            refs/heads/upstream/*|refs/tags/upstream/*)
+              DOCKER_PUSH=no ;;
+
+            # Do not push pull request branches
+            refs/pulls/*)
+              DOCKER_PUSH=no ;;
+
+            refs/heads/master)
+              DOCKER_TAG=latest ;;
+            refs/heads/*|refs/tags/*)
+              DOCKER_TAG="$(echo "$GITHUB_REF" | cut -d / -f 3- | \
+                sed -e 's,/,-,g')" ;;
+          esac
+
+          echo ::set-output name=docker_push::$DOCKER_PUSH
+          echo ::set-output name=docker_tag::$DOCKER_TAG
 
       - name: Build the Docker image
         run: docker-compose build
@@ -22,3 +53,17 @@ jobs:
           curl http://localhost:8000/sealog-server > /tmp/banner.txt
           grep "Welcome to sealog-server\!" /tmp/banner.txt
           docker-compose down
+
+      - name: Log into registry
+        if: steps.init.outputs.docker_push == 'yes'
+        uses: azure/docker-login@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Push to registry
+        if: steps.init.outputs.docker_push == 'yes'
+        run: |
+          IMAGE="whoi/ndsf-sealog-server:${{ steps.init.outputs.docker_tag }}"
+          docker tag oceandatatools/sealog-server:latest "$IMAGE"
+          docker push "$IMAGE"
