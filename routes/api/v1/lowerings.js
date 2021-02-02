@@ -768,10 +768,6 @@ exports.plugin = {
         validate: {
           headers: authorizationHeader,
           payload: (useAccessControl) ? loweringCreatePayload : loweringCreatePayloadNoAccessControl,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: {
@@ -928,10 +924,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: loweringParam,
           payload: (useAccessControl) ? loweringUpdatePayload : loweringUpdatePayloadNoAccessControl,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: {}
@@ -1050,10 +1042,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: loweringParam,
           payload: (useAccessControl) ? loweringUpdatePermissionsPayload : null,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: { }

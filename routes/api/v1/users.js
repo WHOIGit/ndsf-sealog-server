@@ -340,10 +340,6 @@ exports.plugin = {
         validate: {
           headers: authorizationHeader,
           payload: userCreatePayload,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: {
@@ -460,10 +456,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: userParam,
           payload: userUpdatePayload,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: {}
