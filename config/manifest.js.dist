@@ -78,6 +78,13 @@ const manifest = {
       { plugin: '@hapi/inert' },
       { plugin: '@hapi/vision' },
       { plugin: '@hapi/nes' },
+      { plugin: 'hapi-pino',
+        options: {
+          logRequestComplete: false,
+          prettyPrint: process.env.NODE_ENV !== 'production',
+          redact: ['req.headers.authorization'],
+        }
+      },
       { plugin: 'hapi-swagger',
         options: {
           info: {
@@ -106,7 +113,7 @@ const manifest = {
       },
       { plugin: './routes/default', options: {},
         routes: {
-          prefix: envKey('prefix') 
+          prefix: envKey('prefix')
         }
       },
       { plugin: './routes/api/v1/event_aux_data', options: {},

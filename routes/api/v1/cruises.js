@@ -737,10 +737,6 @@ exports.plugin = {
         validate: {
           headers: authorizationHeader,
           payload: (useAccessControl) ? cruiseCreatePayload : cruiseCreatePayloadNoAccessControl,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: {
@@ -942,10 +938,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: cruiseParam,
           payload: (useAccessControl) ? cruiseUpdatePayload : cruiseUpdatePayloadNoAccessControl,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: { }
@@ -1083,10 +1075,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: cruiseParam,
           payload: (useAccessControl) ? cruiseUpdatePermissionsPayload : null,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         response: {
           status: { }
