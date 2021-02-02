@@ -234,10 +234,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: filepondFileParam,
           payload: filepondFilePayload,
-          failAction: (request, h, err) => {
-
-            throw Boom.badRequest(err.message);
-          }
         },
         description: 'Upload cruise file via filepond',
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
@@ -376,10 +372,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: filepondFileParam,
           payload: filepondFilePayload,
-          failAction: (request, h, err) => {
-            
-            throw Boom.badRequest(err.message);
-          }
         },
         description: 'Upload lowering file via filepond',
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
