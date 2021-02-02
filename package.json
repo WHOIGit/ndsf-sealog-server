@@ -38,7 +38,7 @@
     "@hapi/joi": "^16.1.8",
     "@hapi/nes": "^11.2.1",
     "@hapi/vision": "^5.5.4",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
     "deepcopy": "^2.0.0",
     "hapi-auth-jwt2": "^8.8.1",
