@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     image: oceandatatools/sealog-server
+    restart: unless-stopped
     depends_on:
       - mongo
 
@@ -29,7 +30,7 @@ services:
 
   mongo:
     image: mongo:4
-    restart: always
+    restart: unless-stopped
     volumes:
       - database:/data/db
 
