@@ -28,3 +28,12 @@ EXPOSE 8000
 
 # By default, run in production mode
 CMD [ "npm", "run", "start" ]
+
+# Attach git metadata to this container image
+ARG GIT_SOURCE
+LABEL org.opencontainers.image.source=${GIT_SOURCE}
+ENV GIT_SOURCE=${GIT_SOURCE}
+
+ARG GIT_REVISION
+LABEL org.opencontainers.image.revision=${GIT_REVISION}
+ENV GIT_REVISION=${GIT_REVISION}

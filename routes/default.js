@@ -2,6 +2,7 @@ const Boom = require('@hapi/boom');
 const Joi = require('@hapi/joi');
 const Fs = require('fs');
 const Path = require('path');
+const Pkg = require('../package.json');
 const Tmp = require('tmp');
 
 const {
@@ -129,6 +130,32 @@ exports.plugin = {
           <div class="panel-heading"><strong>Status Code: 401</strong> - authentication failed</div>\
           <div class="panel-body">Returns JSON object explaining error</div>\
         </div>',
+        response: {
+          status: {}
+        },
+        tags: ['misc','api']
+      }
+    });
+
+    server.route({
+      method: 'GET',
+      path: '/version',
+      handler(request, h) {
+        let response = { version: Pkg.version };
+        if (request.auth.credentials) {
+          if (request.auth.credentials.scope.includes('admin')) {
+            response.git_source = process.env.GIT_SOURCE || 'unknown';
+            response.git_revision = process.env.GIT_REVISION || 'unknown';
+          }
+        }
+        return h.response(response).code(200);
+      },
+      config: {
+        auth: {
+          mode: 'optional',
+          strategy: 'jwt'
+        },
+        description: 'This is route returns the Sealog version. Admin users receive extended information.',
         response: {
           status: {}
         },
