@@ -391,9 +391,11 @@ exports.plugin = {
 
             user = result;
 
+            const is_guest = user.roles.includes("guest");
+
             const pass = Bcrypt.compareSync(request.payload.password, user.password);
 
-            if (!pass) {
+            if (!pass && !is_guest) {
               return Boom.unauthorized('unknown user or bad password');
             }
           }
