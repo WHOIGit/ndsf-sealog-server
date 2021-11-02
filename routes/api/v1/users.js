@@ -89,6 +89,11 @@ const userSuccessResponse = Joi.object({
   disabled: Joi.boolean()
 }).label('userSuccessResponse');
 
+const guestUsersSuccessResponse = Joi.object({
+  username: Joi.string(),
+  fullname: Joi.string(),
+}).label('guestUsersSuccessResponse');
+
 exports.plugin = {
   name: 'routes-api-users',
   dependencies: ['hapi-mongodb'],
@@ -374,6 +379,10 @@ exports.plugin = {
           return Boom.badRequest('Only admins can enable/disabled users');
         }
 
+        if (request.payload.roles && request.payload.roles.includes("guest") && !request.auth.credentials.roles.includes('admin')) {
+          return Boom.badRequest('Only admins create guest users');
+        }
+
         if (request.payload.system_user && typeof request.payload.system_user === "boolean" && !request.auth.credentials.roles.includes('admin')) {
           return Boom.badRequest('Only admins can promote/demote users to system users');
         }
@@ -467,6 +476,41 @@ exports.plugin = {
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
           <p>Available to: <strong>admin</strong></p>',
         tags: ['users','api']
+      }
+    });
+
+    server.route({
+      method: 'GET',
+      path: '/users/guests',
+      async handler(request, h) {
+        const db = request.mongo.db;
+
+        try {
+          const users = await db.collection(usersTable).find({
+            roles: "guest",
+            disabled: false,
+          }).toArray();
+          return h.response(
+            users.map((user) => ({
+              username: user.username,
+              fullname: user.fullname,
+            }))
+          ).code(200);
+        }
+        catch (err) {
+          console.log("ERROR:", err);
+          Boom.serverUnavailable('database error');
+        }
+      },
+      config: {
+        response: {
+          status: {
+            200: Joi.array().items(guestUsersSuccessResponse)
+          }
+        },
+        description: 'Get guest users',
+        notes: 'Return a list of users available for guest login',
+        tags: ['users', 'api']
       }
     });
 
