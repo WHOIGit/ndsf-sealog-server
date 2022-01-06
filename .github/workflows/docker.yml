@@ -66,7 +66,9 @@ jobs:
           context: .
           platforms: ${{ steps.init.outputs.docker_platforms }}
           push: false
-          tags: ${{ steps.init.outputs.docker_repo }}:${{ steps.init.outputs.docker_tag }}
+          # This tag matches what is found in the docker-compose.yml file
+          # so that we can run the tests.
+          tags: oceandatatools/sealog-server
           build-args: |
             GIT_SOURCE=${{ steps.init.outputs.git_source }}
             GIT_REVISION=${{ steps.init.outputs.git_revision }}
