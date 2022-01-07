@@ -60,11 +60,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Build the Docker image
+      - name: Build the Docker image for native
         uses: docker/build-push-action@v2
         with:
           context: .
-          platforms: ${{ steps.init.outputs.docker_platforms }}
           load: true
           # This tag matches what is found in the docker-compose.yml file
           # so that we can run the tests.
@@ -84,7 +83,7 @@ jobs:
           grep "Welcome to sealog-server\!" /tmp/banner.txt
           docker-compose down
 
-      - name: Push to registry
+      - name: Rebuilding and pushing to registry
         if: steps.init.outputs.docker_push == 'true'
         uses: docker/build-push-action@v2
         with:
