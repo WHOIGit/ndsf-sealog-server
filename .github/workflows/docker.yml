@@ -9,26 +9,31 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      # For multi-platform builds
+      # https://github.com/docker/build-push-action/blob/master/docs/advanced/multi-platform.md
+      - uses: docker/setup-qemu-action@v1
+      - uses: docker/setup-buildx-action@v1
+
       - name: Initialize
         id: init
         run: |
           # Determine whether to push to Docker Hub based on the event type
           case "${{ github.event_name }}" in
             push)
-              DOCKER_PUSH=yes ;;
+              DOCKER_PUSH=true ;;
             *)
-              DOCKER_PUSH=no ;;
+              DOCKER_PUSH=false ;;
           esac
 
           # Map git ref branch or tag name to Docker tag version
           case "${{ github.ref }}" in
             # Do not push upstream branches and tags to Docker Hub
             refs/heads/upstream/*|refs/tags/upstream/*)
-              DOCKER_PUSH=no ;;
+              DOCKER_PUSH=false ;;
 
             # Do not push pull request branches
             refs/pulls/*)
-              DOCKER_PUSH=no ;;
+              DOCKER_PUSH=false ;;
 
             refs/heads/master)
               DOCKER_TAG=latest ;;
@@ -42,15 +47,30 @@ jobs:
           GIT_REVISION=$(git rev-parse HEAD)$(git diff --quiet || echo "-dirty")
 
           echo ::set-output name=docker_push::$DOCKER_PUSH
+          echo ::set-output name=docker_repo::whoi/$(basename "${{ github.repository }}")
           echo ::set-output name=docker_tag::$DOCKER_TAG
+          echo ::set-output name=docker_platforms::linux/amd64,linux/arm64
           echo ::set-output name=git_source::$GIT_SOURCE
           echo ::set-output name=git_revision::$GIT_REVISION
 
-      - name: Build the Docker image
-        run: |
-          docker-compose build \
-            --build-arg GIT_SOURCE=${{ steps.init.outputs.git_source }} \
-            --build-arg GIT_REVISION=${{ steps.init.outputs.git_revision }}
+      - name: Log into registry
+        if: steps.init.outputs.docker_push == 'true'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build the Docker image for native
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          load: true
+          # This tag matches what is found in the docker-compose.yml file
+          # so that we can run the tests.
+          tags: oceandatatools/sealog-server
+          build-args: |
+            GIT_SOURCE=${{ steps.init.outputs.git_source }}
+            GIT_REVISION=${{ steps.init.outputs.git_revision }}
 
       - name: Run test suite
         run: docker-compose run sealog-server npm test
@@ -63,16 +83,14 @@ jobs:
           grep "Welcome to sealog-server\!" /tmp/banner.txt
           docker-compose down
 
-      - name: Log into registry
-        if: steps.init.outputs.docker_push == 'yes'
-        uses: azure/docker-login@v1
+      - name: Rebuilding and pushing to registry
+        if: steps.init.outputs.docker_push == 'true'
+        uses: docker/build-push-action@v2
         with:
-          username: ${{ secrets.DOCKER_HUB_USER }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Push to registry
-        if: steps.init.outputs.docker_push == 'yes'
-        run: |
-          IMAGE="whoi/ndsf-sealog-server:${{ steps.init.outputs.docker_tag }}"
-          docker tag oceandatatools/sealog-server:latest "$IMAGE"
-          docker push "$IMAGE"
+          context: .
+          platforms: ${{ steps.init.outputs.docker_platforms }}
+          push: true
+          tags: ${{ steps.init.outputs.docker_repo }}:${{ steps.init.outputs.docker_tag }}
+          build-args: |
+            GIT_SOURCE=${{ steps.init.outputs.git_source }}
+            GIT_REVISION=${{ steps.init.outputs.git_revision }}
