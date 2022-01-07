@@ -65,7 +65,7 @@ jobs:
         with:
           context: .
           platforms: ${{ steps.init.outputs.docker_platforms }}
-          push: false
+          load: true
           # This tag matches what is found in the docker-compose.yml file
           # so that we can run the tests.
           tags: oceandatatools/sealog-server
