@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: oceandatatools/sealog-server
+    image: whoi/ndsf-sealog-server
     restart: unless-stopped
     depends_on:
       - mongo
