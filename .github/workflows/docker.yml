@@ -87,6 +87,12 @@ jobs:
           cache-to: |
             type=local,dest=/tmp/.buildx-cache-new,mode=max
 
+      - name: Tag latest for CI testing
+        run: |
+          docker tag \
+            ${{ fromJSON(steps.meta.outputs.json).tags[0] }} \
+            ${{ steps.init.outputs.docker_repo }}
+
       - name: Run test suite
         run: docker-compose run sealog-server npm test
 
