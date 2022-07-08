@@ -89,7 +89,8 @@ jobs:
 
       - name: Tag latest for CI testing
         run: |
-          docker tag ${{ steps.meta.outputs.tags[0] }} \
+          docker tag \
+            ${{ fromJSON(steps.meta.outputs.json).tags[0] }} \
             ${{ steps.init.outputs.docker_repo }}
 
       - name: Run test suite
