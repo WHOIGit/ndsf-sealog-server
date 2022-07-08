@@ -261,24 +261,27 @@ exports.plugin = {
         const ObjectID = request.mongo.ObjectID;
 
         let cruise = null;
-      
+
         try {
-          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
-
-          if (!cruiseResult) {
-            return Boom.notFound('cruise not found for that id');          
-          }
-
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
-          }
-
-          cruise = cruiseResult;
-
+          cruise = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
         }
         catch (err) {
           console.log("ERROR:", err);
           return Boom.serverUnavailable('database error');
+        }
+
+        if (!cruise) {
+          return Boom.notFound('cruise not found for that id');
+        }
+
+        if (cruise.cruise_hidden && useAccessControl) {
+          if (request.auth.credentials.scope.includes("admin")) {
+            // permitted
+          } else if ((cruise.cruise_access_list || []).includes(request.auth.credentials.id)) {
+            // permitted
+          } else {
+            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          }
         }
 
         const query = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
@@ -395,28 +398,27 @@ exports.plugin = {
         const ObjectID = request.mongo.ObjectID;
 
         let lowering = null;
-      
+
         try {
-          const loweringResult = await db.collection(loweringsTable).findOne({ _id: ObjectID(request.params.id) });
-
-          if (!loweringResult) {
-            return Boom.notFound('lowering not found for that id');          
-          }
-
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
-          }
-
-          lowering = loweringResult;
-
+          lowering = await db.collection(loweringsTable).findOne({ _id: ObjectID(request.params.id) });
         }
         catch (err) {
           console.log("ERROR:", err);
           return Boom.serverUnavailable('database error');
         }
 
-        if (lowering.lowering_hidden && !request.auth.credentials.scope.includes("admin")) {
-          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
+        if (!lowering) {
+          return Boom.notFound('lowering not found for that id');
+        }
+
+        if (lowering.lowering_hidden && useAccessControl) {
+          if (request.auth.credentials.scope.includes("admin")) {
+            // permitted
+          } else if ((lowering.lowering_access_list || []).includes(request.auth.credentials.id)) {
+            // permitted
+          } else {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          }
         }
 
         const query = _buildEventsQuery(request, lowering.start_ts, lowering.stop_ts);
