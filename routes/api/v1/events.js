@@ -89,6 +89,19 @@ const _buildEventsQuery = (request, start_ts = new Date("1970-01-01T00:00:00.000
     }
   }
 
+  if (request.query.fulltext) {
+
+    query.$or = [];
+
+    let query_regex = new RegExp(request.query.fulltext, 'i');
+
+    query.$or.push(
+      { event_value: query_regex },
+      { event_free_text: query_regex },
+      { event_options: { $elemMatch: { event_option_value: query_regex } } }
+      );
+  }
+
   if (request.query.value) {
     if (Array.isArray(request.query.value)) {
 
@@ -177,6 +190,10 @@ const eventQuery = Joi.object({
     Joi.array().items(Joi.string()).optional()
   ),
   value: Joi.alternatives().try(
+    Joi.string(),
+    Joi.array().items(Joi.string()).optional()
+  ),
+  fulltext: Joi.alternatives().try(
     Joi.string(),
     Joi.array().items(Joi.string()).optional()
   ),
