@@ -2,6 +2,7 @@ const Boom = require('@hapi/boom');
 const Joi = require('@hapi/joi');
 const { parseAsync } = require('json2csv');
 const Deepcopy = require('deepcopy');
+const escapeStringRegexp = require('escape-string-regexp');
 
 const THRESHOLD = 120; //seconds
 
@@ -93,7 +94,7 @@ const _buildEventsQuery = (request, start_ts = new Date("1970-01-01T00:00:00.000
 
     query.$or = [];
 
-    let query_regex = new RegExp(request.query.fulltext, 'i');
+    let query_regex = new RegExp(escapeStringRegexp(request.query.fulltext), 'i');
 
     query.$or.push(
       { event_value: query_regex },
