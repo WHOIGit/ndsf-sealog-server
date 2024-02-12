@@ -115,7 +115,7 @@ const loweringCreatePayload = Joi.object({
   id: Joi.string().length(24).optional(),
   lowering_id: Joi.string().required(),
   start_ts: Joi.date().iso().required(),
-  stop_ts: Joi.date().iso().required(),
+  stop_ts: Joi.date().iso().optional(),
   lowering_additional_meta: Joi.object().required(),
   lowering_tags: Joi.array().items(loweringTag).required(),
   lowering_location: Joi.string().allow('').required(),
@@ -740,7 +740,12 @@ exports.plugin = {
 
         // Validate date strings
         lowering.start_ts = new Date(request.payload.start_ts);
-        lowering.stop_ts = new Date(request.payload.stop_ts);
+        if (lowering.stop_ts) {
+          lowering.stop_ts = new Date(request.payload.stop_ts);
+        }
+        else {
+          console.log("NO LOWERING STOP TIMESTAMP");
+        }
 
         if (lowering.start_ts >= lowering.stop_ts) {
           return Boom.badRequest('Start date must be older than stop date');
