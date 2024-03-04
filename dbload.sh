@@ -5,8 +5,12 @@ read username
 
 host="harmonyhill"  # sealog machine
 vehicle="jason" # vehicle we're using
-CRUISE_NUMBER="TN406"   # cruise
-DIVE_NUMBER="J2-1438"   # dive
+DEFAULT_CRUISE_NUMBER="TN406"  
+DEFAULT_DIVE_NUMBER="J2-1438"
+
+# If positional parameters are provided, override the default values
+CRUISE_NUMBER="${1:-$DEFAULT_CRUISE_NUMBER}"
+DIVE_NUMBER="${2:-$DEFAULT_DIVE_NUMBER}"
 dbdump_path="~/sealog-files/dbdump" # where would you like to stick this?
 
 cruise_file_name="$CRUISE_NUMBER"_cruiseRecord_mod.json
