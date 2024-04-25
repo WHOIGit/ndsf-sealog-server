@@ -1,7 +1,6 @@
 const Boom = require('@hapi/boom');
 const Joi = require('@hapi/joi');
-const { parseAsync } = require('json2csv');
-const Deepcopy = require('deepcopy');
+const { flattenEventJSON, convertToCSV } = require('./json_util');
 
 const {
   useAccessControl
@@ -14,90 +13,6 @@ const {
   cruisesTable
 } = require('../../../config/db_constants');
 
-const _flattenJSON = (json) => {
-
-  const flattenJSON = json.map((event) => {
-
-    const copiedEvent = Deepcopy(event);
-
-    let enumerator = 0;
-    if (copiedEvent.aux_data) {
-      
-      copiedEvent.aux_data.map((data) => {
-    
-        data.data_array.map((data2) => {
-
-          const elementName = `${data.data_source}.${data2.data_name}`;
-          const elementUOM = `${data.data_source}.${data2.data_name}`;
-
-          if (!(elementName + '_value' in copiedEvent)) {
-            copiedEvent[elementName + '_value'] = data2.data_value;
-            copiedEvent[elementUOM + '_uom'] = data2.data_uom;
-          }
-          else {
-            enumerator = 2;
-            while (enumerator > 1) {
-              if (!(elementName + "_" + enumerator  + '_value' in copiedEvent)) {
-                copiedEvent[elementName + "_" + enumerator + '_value'] = data2.data_value;
-                copiedEvent[elementUOM + "_" + enumerator + '_uom'] = data2.data_uom;
-                enumerator = 1;
-              }
-              else {
-                enumerator++;
-              }
-            }
-          }
-        });  
-      });
-      delete copiedEvent.aux_data;
-    }
-
-    enumerator = 0;
-    copiedEvent.event_options.map((data) => {
-
-      const elementName = `event_option.${data.event_option_name}`;
-      if (!(elementName in copiedEvent)) {
-        copiedEvent[elementName] = data.event_option_value;
-      }
-      else {
-        enumerator = 2;
-        while (enumerator > 1) {
-          if (!(elementName + "_" + enumerator in copiedEvent)) {
-            copiedEvent[elementName + "_" + enumerator] = data.event_option_value;
-            enumerator = 1;
-          }
-          else {
-            enumerator++;
-          }
-        }
-      }
-    });
-
-    delete copiedEvent.event_options;
-
-    copiedEvent.ts = copiedEvent.ts.toISOString();
-    copiedEvent.id = copiedEvent.id.id.toString('hex');
-    copiedEvent.event_free_text = copiedEvent.event_free_text.replace(/"/g, '"');
-    return copiedEvent;
-  });
-
-  return flattenJSON;
-};
-
-const _buildCSVHeaders = (flattenJSON) => {
-
-  const csvHeaders = flattenJSON.reduce((headers, event) => {
-
-    const keyNames = Object.keys(event);
-
-    return headers.concat(keyNames).filter((value, index, self) => {
-
-      return self.indexOf(value) === index;
-    });
-  }, ['id','ts','event_value','event_author','event_free_text']);
-
-  return csvHeaders.slice(0, 5).concat(csvHeaders.slice(5).filter((header) => header.startsWith("event_option")).sort(), csvHeaders.slice(5).filter((header) => !header.startsWith("event_option")).sort());
-};
 
 const _renameAndClearFields = (doc) => {
 
@@ -244,7 +159,8 @@ const eventExportQuery = Joi.object({
     Joi.string(),
     Joi.array().items(Joi.string()).optional()
   ).optional(),
-  freetext: Joi.string().optional()
+  freetext: Joi.string().optional(),
+  use_renav: Joi.boolean().optional()
 }).optional().label('eventExportQuery');
 
 exports.plugin = {
@@ -353,13 +269,12 @@ exports.plugin = {
           results.forEach(_renameAndClearFields);
 
           if (request.query.format && request.query.format === "csv") {
+            const { events } = flattenEventJSON(results);
+            csv_results = convertToCSV(events, request.query.use_renav);
 
-            const flattenJSON = _flattenJSON(results);
-            const csvHeaders = _buildCSVHeaders(flattenJSON);
-            
-            const csv_results = await parseAsync(flattenJSON, { fields: csvHeaders });
-
-            return h.response(csv_results).code(200);
+            return h.response(csv_results)
+              .header('Content-Length', csv_results.length)
+              .type('text/html').code(200);
           }
 
           return h.response(results).code(200);
@@ -376,11 +291,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: eventParam,
           query: eventExportQuery
-        },
-        response: {
-          status: {
-            200: Joi.any()
-          }
         },
         description: 'Export the events merged with their event_aux_data records for a cruise based on the cruise id',
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
@@ -489,13 +399,12 @@ exports.plugin = {
           results.forEach(_renameAndClearFields);
 
           if (request.query.format && request.query.format === "csv") {
+            const { events } = flattenEventJSON(results);
+            csv_results = convertToCSV(events, request.query.use_renav);
 
-            const flattenJSON = _flattenJSON(results);
-            const csvHeaders = _buildCSVHeaders(flattenJSON);
-            
-            const csv_results = await parseAsync(flattenJSON, { fields: csvHeaders });
-
-            return h.response(csv_results).code(200);
+            return h.response(csv_results)
+              .header('Content-Length', csv_results.length)
+              .type('text/html').code(200);
           }
 
           return h.response(results).code(200);
@@ -512,11 +421,6 @@ exports.plugin = {
           headers: authorizationHeader,
           params: eventParam,
           query: eventExportQuery
-        },
-        response: {
-          status: {
-            200: Joi.any()
-          }
         },
         description: 'Export the events merged with their event_aux_data records for a lowering based on the lowering id',
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
@@ -622,12 +526,12 @@ exports.plugin = {
               results.forEach(_renameAndClearFields);
 
               if (request.query.format && request.query.format === "csv") {
-                const flattenJSON = _flattenJSON(results);
-                const csvHeaders = _buildCSVHeaders(flattenJSON);
-                
-                const csv_results = await parseAsync(flattenJSON, { fields: csvHeaders });
-
-                return h.response(csv_results).code(200);
+                const { events } = flattenEventJSON(results);
+                csv_results = convertToCSV(events, request.query.use_renav);
+    
+                return h.response(csv_results)
+                  .header('Content-Length', csv_results.length)
+                  .type('text/html').code(200);
               }
 
               return h.response(results).code(200);
@@ -649,11 +553,6 @@ exports.plugin = {
         validate: {
           headers: authorizationHeader,
           query: eventExportQuery
-        },
-        response: {
-          status: {
-            200: Joi.any()
-          }
         },
         description: 'Export events merged with their aux_data based on the query parameters',
         notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
