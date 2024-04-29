@@ -273,7 +273,6 @@ exports.plugin = {
             csv_results = convertToCSV(events, request.query.use_renav);
 
             return h.response(csv_results)
-              .header('Content-Length', csv_results.length)
               .type('text/html').code(200);
           }
 
@@ -403,7 +402,6 @@ exports.plugin = {
             csv_results = convertToCSV(events, request.query.use_renav);
 
             return h.response(csv_results)
-              .header('Content-Length', csv_results.length)
               .type('text/html').code(200);
           }
 
@@ -530,7 +528,6 @@ exports.plugin = {
                 csv_results = convertToCSV(events, request.query.use_renav);
     
                 return h.response(csv_results)
-                  .header('Content-Length', csv_results.length)
                   .type('text/html').code(200);
               }
 
