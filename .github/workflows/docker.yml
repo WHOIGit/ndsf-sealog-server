@@ -107,10 +107,7 @@ jobs:
           npm install -g newman
 
           # Run Postman tests
-          newman run "integration-tests/api_tests.postman_collection.json" \
-            --env-var "baseURL=http://localhost:8000" \
-            --env-var "user=${{ secrets.API_TEST_USER }}" \
-            --env-var "password=${{ secrets.API_TEST_PASSWORD }}"
+          newman run "integration-tests/api_tests.postman_collection.json"
 
           docker-compose down
 

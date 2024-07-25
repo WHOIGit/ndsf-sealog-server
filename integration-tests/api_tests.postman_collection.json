@@ -3222,7 +3222,7 @@
 		},
 		{
 			"key": "password",
-			"value": "password",
+			"value": "demo",
 			"type": "string"
 		}
 	]
