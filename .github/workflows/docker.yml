@@ -96,12 +96,19 @@ jobs:
       - name: Run test suite
         run: docker-compose run sealog-server npm test
 
-      - name: Run server
+      - name: Run server and Postman tests
         run: |
           docker-compose up -d
           sleep 10
           curl http://localhost:8000/sealog-server > /tmp/banner.txt
           grep "Welcome to sealog-server\!" /tmp/banner.txt
+
+          # Install Newman for running Postman tests
+          npm install -g newman
+
+          # Run Postman tests
+          newman run "integration-tests/api_tests.postman_collection.json"
+
           docker-compose down
 
       # Because `docker buildx build` cannot have multiple cache export targets
