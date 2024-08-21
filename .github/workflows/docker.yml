@@ -94,11 +94,11 @@ jobs:
             ${{ steps.init.outputs.docker_repo }}
 
       - name: Run test suite
-        run: docker-compose run sealog-server npm test
+        run: docker compose run sealog-server npm test
 
       - name: Run server and Postman tests
         run: |
-          docker-compose up -d
+          docker compose up -d
           sleep 10
           curl http://localhost:8000/sealog-server > /tmp/banner.txt
           grep "Welcome to sealog-server\!" /tmp/banner.txt
@@ -109,7 +109,7 @@ jobs:
           # Run Postman tests
           newman run "integration-tests/api_tests.postman_collection.json"
 
-          docker-compose down
+          docker compose down
 
       # Because `docker buildx build` cannot have multiple cache export targets
       # yet, we build and push separately.
