@@ -104,7 +104,15 @@ const _rolesToScope = (roles) => {
   const scope = roles.reduce((scope_accumulator, role) => {
 
     if (role === 'event_watcher') {
+      // If you can read events, you can also read cruises and lowerings
       return scope_accumulator.concat(['read_events', 'read_cruises', 'read_lowerings']);
+    } 
+    else if (role === 'lowering_watcher') {
+      // If you can read lowerings, you can also read cruises
+      return scope_accumulator.concat(['read_cruises', 'read_lowerings']);
+    }
+    else if (role === 'cruise_watcher') {
+      return scope_accumulator.concat(['read_cruises']);
     }
     else if (role === 'event_logger') {
       return scope_accumulator.concat(['read_events', 'write_events', 'read_event_templates', 'read_cruises', 'read_lowerings']);
