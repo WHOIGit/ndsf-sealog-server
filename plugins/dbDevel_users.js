@@ -41,7 +41,7 @@ exports.plugin = {
         email: "guest@notarealserver.com",
         password: await hashedPassword(""),
         last_login: new Date(),
-        roles: ['guest','event_manager', 'event_logger', 'event_watcher'],
+        roles: ['guest','cruise_watcher', 'lowering_watcher'],
         system_user: true,
         disabled: false,
         loginToken: randomAsciiString(20)
