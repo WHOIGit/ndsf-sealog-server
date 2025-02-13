@@ -6,12 +6,15 @@
   "bugs": {
     "url": "https://github.com/oceandatatools/sealog-server/issues"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "main": "server.js",
   "scripts": {
     "start": "NODE_ENV=production node server.js",
     "start-debug": "NODE_ENV=debug node server.js",
     "start-test": "lab -v **/*.test.js",
-    "start-devel": "NODE_ENV=development npm-run-all --parallel lint start:server",
+    "start-devel": "NODE_ENV=development node server.js",
     "start:server": "nodemon server.js",
     "lint": "eslint . --ext .js",
     "lint-fix": "eslint . --ext .js --fix"
