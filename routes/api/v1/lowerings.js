@@ -1,7 +1,7 @@
 const Joi = require('joi');
 const Boom = require('@hapi/boom');
 const Fs = require('fs');
-const Tmp = require('tmp');
+const Os = require('os');
 const Path = require('path');
 const { parseAsync } = require('json2csv');
 const Deepcopy = require('deepcopy');
@@ -930,7 +930,7 @@ exports.plugin = {
           try {
             request.payload.lowering_additional_meta.lowering_files.map((file) => {
 
-              mvFilesToDir(Path.join(Tmp.tmpdir,file), Path.join(LOWERING_PATH, request.params.id));
+              mvFilesToDir(Path.join(Os.tmpdir(),file), Path.join(LOWERING_PATH, request.params.id));
             });
           }
           catch (err) {

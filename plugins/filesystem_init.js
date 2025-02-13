@@ -1,5 +1,5 @@
-const Fs = require('fs');
-const Mkdirp = require('mkdirp');
+const fs = require('fs/promises');
+const path = require('path');
 
 const {
   IMAGE_PATH,
@@ -11,56 +11,26 @@ exports.plugin = {
   name: 'filesystem_init',
   dependencies: [],
   register: async (options) => {
+    const directories = [
+      { path: IMAGE_PATH, name: 'Image' },
+      { path: CRUISE_PATH, name: 'Cruise' },
+      { path: LOWERING_PATH, name: 'Lowering' }
+    ];
 
-    console.log("Searching for Image Directory");
-    if (!Fs.existsSync(IMAGE_PATH)) {
-      console.log("Image Directory not found... trying to create.");
-      await Mkdirp(IMAGE_PATH, (err) => {
-
-        if (err) {
-          console.error(err);
+    for (const dir of directories) {
+      console.log(`Searching for ${dir.name} Directory`);
+      try {
+        await fs.access(dir.path);
+        console.log(`${dir.name} Directory found.`);
+      } catch {
+        console.log(`${dir.name} Directory not found... trying to create.`);
+        try {
+          await fs.mkdir(dir.path, { recursive: true });
+          console.log(`${dir.name} Directory created`);
+        } catch (err) {
+          console.error(`Error creating ${dir.name} Directory:`, err);
         }
-        else {
-          console.log('Image Directory created');
-        }
-      });
-    }
-    else {
-      console.log("Image Directory found.");
-    }
-
-    console.log("Searching for Cruise Directory");
-    if (!Fs.existsSync(CRUISE_PATH)) {
-      console.log("Cruise Directory not found... trying to create.");
-      await Mkdirp(CRUISE_PATH, (err) => {
-
-        if (err) {
-          console.error(err);
-        }
-        else {
-          console.log('Cruise Directory created');
-        }
-      });
-    }
-    else {
-      console.log("Cruise Directory found.");
-    }
-
-    console.log("Searching for Lowering Directory");
-    if (!Fs.existsSync(LOWERING_PATH)) {
-      console.log("Lowering Directory not found... trying to create.");
-      await Mkdirp(LOWERING_PATH, (err) => {
-
-        if (err) {
-          console.error(err);
-        }
-        else {
-          console.log('Lowering Directory created');
-        }
-      });
-    }
-    else {
-      console.log("Lowering Directory found.");
+      }
     }
   }
 };

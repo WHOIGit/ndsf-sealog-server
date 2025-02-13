@@ -1,10 +1,10 @@
 const Joi = require('joi');
 const Boom = require('@hapi/boom');
 const Fs = require('fs');
-const Tmp = require('tmp');
 const Path = require('path');
 const { parseAsync } = require('json2csv');
 const Deepcopy = require('deepcopy');
+const Os = require('os');
 
 const {
   CRUISE_PATH
@@ -909,8 +909,7 @@ exports.plugin = {
         if (request.payload.cruise_additional_meta && request.payload.cruise_additional_meta.cruise_files) {
           try {
             request.payload.cruise_additional_meta.cruise_files.map((file) => {
-              // console.log("move files from", Path.join(Tmp.tmpdir,file), "to", Path.join(CRUISE_PATH, request.params.id));
-              mvFilesToDir(Path.join(Tmp.tmpdir,file), Path.join(CRUISE_PATH, request.params.id));
+              mvFilesToDir(Path.join(Os.tmpdir(), file), Path.join(CRUISE_PATH, request.params.id));
             });
 
           }
