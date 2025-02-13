@@ -19,12 +19,11 @@
     "lint": "eslint . --ext .js",
     "lint-fix": "eslint . --ext .js --fix"
   },
-  "author": "Webb Pinner",
-  "homepage": "https://github.com/oceandatatools/sealog-server",
+  "homepage": "https://github.com/WHOIGit/ndsf-sealog-server",
   "private": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/oceandatatools/sealog-server.git"
+    "url": "https://github.com/WHOIGit/ndsf-sealog-server"
   },
   "keywords": [
     "hapi",
