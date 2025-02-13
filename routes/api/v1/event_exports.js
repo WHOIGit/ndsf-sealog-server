@@ -179,7 +179,7 @@ exports.plugin = {
         let cruise = null;
 
         try {
-          cruise = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
+          cruise = await db.collection(cruisesTable).findOne({ _id: new ObjectID(request.params.id) });
         }
         catch (err) {
           console.log("ERROR:", err);
@@ -309,7 +309,7 @@ exports.plugin = {
         let lowering = null;
 
         try {
-          lowering = await db.collection(loweringsTable).findOne({ _id: ObjectID(request.params.id) });
+          lowering = await db.collection(loweringsTable).findOne({ _id: new ObjectID(request.params.id) });
         }
         catch (err) {
           console.log("ERROR:", err);
