@@ -104,11 +104,6 @@ const manifest = {
       { plugin: 'hapi-mongodb', options:
         {
           url: mongodb_URL,
-          settings: {
-            poolSize: 20,
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-          },
           decorate: true
         }
       },

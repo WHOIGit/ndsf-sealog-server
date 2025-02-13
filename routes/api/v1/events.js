@@ -1,5 +1,5 @@
 const Boom = require('@hapi/boom');
-const Joi = require('@hapi/joi');
+const Joi = require('joi');
 const { parseAsync } = require('json2csv');
 const Deepcopy = require('deepcopy');
 const escape = require('lodash.escape');
@@ -267,7 +267,7 @@ exports.plugin = {
         let cruise = null;
 
         try {
-          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
+          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!cruiseResult) {
             return Boom.badRequest('No cruise record found for id: ' + request.params.id );
@@ -393,7 +393,7 @@ exports.plugin = {
         let cruise = null;
 
         try {
-          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
+          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!cruiseResult) {
             return Boom.badRequest('No record cruise found for id: ' + request.params.id );
@@ -509,7 +509,7 @@ exports.plugin = {
         let lowering = null;
 
         try {
-          const loweringResult = await db.collection(loweringsTable).findOne({ _id: ObjectID(request.params.id) });
+          const loweringResult = await db.collection(loweringsTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!loweringResult) {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
@@ -636,7 +636,7 @@ exports.plugin = {
         let lowering = null;
 
         try {
-          const loweringResult = await db.collection(loweringsTable).findOne({ _id: ObjectID(request.params.id) });
+          const loweringResult = await db.collection(loweringsTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!loweringResult) {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
@@ -970,7 +970,7 @@ exports.plugin = {
         const db = request.mongo.db;
         const ObjectID = request.mongo.ObjectID;
 
-        const query = { _id: ObjectID(request.params.id) };
+        const query = { _id: new ObjectID(request.params.id) };
 
         try {
           const result = await db.collection(eventsTable).findOne(query);

@@ -1,7 +1,7 @@
-const Joi = require('@hapi/joi');
+const Joi = require('joi');
 const Boom = require('@hapi/boom');
 const Fs = require('fs');
-const Tmp = require('tmp');
+const Os = require('os');
 const Path = require('path');
 const { parseAsync } = require('json2csv');
 const Deepcopy = require('deepcopy');
@@ -334,7 +334,7 @@ exports.plugin = {
         let cruise = null;
 
         try {
-          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: ObjectID(request.params.id) });
+          const cruiseResult = await db.collection(cruisesTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!cruiseResult) {
             return Boom.badRequest('No cruise record found for id: ' + request.params.id);
@@ -487,7 +487,7 @@ exports.plugin = {
         let event = null;
 
         try {
-          const eventResult = await db.collection(eventsTable).findOne({ _id: ObjectID(request.params.id) });
+          const eventResult = await db.collection(eventsTable).findOne({ _id: new ObjectID(request.params.id) });
 
           if (!eventResult) {
             return Boom.badRequest('No event record found for id: ' + request.params.id);
@@ -930,7 +930,7 @@ exports.plugin = {
           try {
             request.payload.lowering_additional_meta.lowering_files.map((file) => {
 
-              mvFilesToDir(Path.join(Tmp.tmpdir,file), Path.join(LOWERING_PATH, request.params.id));
+              mvFilesToDir(Path.join(Os.tmpdir(),file), Path.join(LOWERING_PATH, request.params.id));
             });
           }
           catch (err) {

@@ -1,9 +1,9 @@
 const Boom = require('@hapi/boom');
-const Joi = require('@hapi/joi');
+const Joi = require('joi');
 const Fs = require('fs');
 const Path = require('path');
 const Pkg = require('../package.json');
-const Tmp = require('tmp');
+const Os = require('os');
 
 const {
   IMAGE_PATH,
@@ -190,7 +190,7 @@ exports.plugin = {
       path: CRUISE_ROUTE + '/filepond/revert',
       async handler(request, h) {
 
-        await handleFolderDelete(Path.join(Tmp.tmpdir, request.payload));
+        await handleFolderDelete(Path.join(Os.tmpdir(), request.payload));
         return h.response().code(204);
       },
       config: {
@@ -235,7 +235,8 @@ exports.plugin = {
 
         const { payload } = request;
         let tmpobj = null;
-        tmpobj = Tmp.dirSync({ mode: '0750', prefix: request.params.id + '_' });
+        tmpobj = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
+        Fs.chmodSync(tmpobj, '0750');
 
         try {
           await handleFileUpload(tmpobj.name, payload.filepond[1]);
@@ -328,7 +329,7 @@ exports.plugin = {
       path: LOWERING_ROUTE + '/filepond/revert',
       async handler(request, h) {
 
-        await handleFolderDelete(Path.join(Tmp.tmpdir, request.payload));
+        await handleFolderDelete(Path.join(Os.tmpdir(), request.payload));
         return h.response().code(204);
       },
       config: {
@@ -373,7 +374,8 @@ exports.plugin = {
 
         const { payload } = request;
         let tmpobj = null;
-        tmpobj = Tmp.dirSync({ mode: '0750', prefix: request.params.id + '_' });
+        tmpobj = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
+        Fs.chmodSync(tmpobj, '0750');
 
         try {
           await handleFileUpload(tmpobj.name, payload.filepond[1]);

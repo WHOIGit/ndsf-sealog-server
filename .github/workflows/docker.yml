@@ -94,7 +94,7 @@ jobs:
             ${{ steps.init.outputs.docker_repo }}
 
       - name: Run test suite
-        run: docker compose run sealog-server npm test
+        run: docker compose run sealog-server npm run start-test
 
       - name: Run server and Postman tests
         run: |

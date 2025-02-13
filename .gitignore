@@ -1,9 +1,9 @@
 # node dependencies
 node_modules
 
-# npm logfile and package lock file
+# npm logfile
 npm-debug.log
-package-lock.json
+
 
 # Virtual environment
 venv/
