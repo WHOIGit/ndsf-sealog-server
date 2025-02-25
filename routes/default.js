@@ -234,13 +234,12 @@ exports.plugin = {
       async handler(request, h) {
 
         const { payload } = request;
-        let tmpobj = null;
-        tmpobj = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
-        Fs.chmodSync(tmpobj, '0750');
+        const tmp_path = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
+        Fs.chmodSync(tmp_path, '0750');
 
         try {
-          await handleFileUpload(tmpobj.name, payload.filepond[1]);
-          return h.response(Path.basename(tmpobj.name)).code(201);
+          await handleFileUpload(tmp_path, payload.filepond[1]);
+          return h.response(Path.basename(tmp_path)).code(201);
         }
         catch (err) {
           return Boom.serverUnavailable('Upload Error', err);
@@ -373,13 +372,12 @@ exports.plugin = {
       async handler(request, h) {
 
         const { payload } = request;
-        let tmpobj = null;
-        tmpobj = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
-        Fs.chmodSync(tmpobj, '0750');
+        const tmp_path = Fs.mkdtempSync(Path.join(Os.tmpdir(), request.params.id + '_'));
+        Fs.chmodSync(tmp_path, '0750');
 
         try {
-          await handleFileUpload(tmpobj.name, payload.filepond[1]);
-          return h.response(Path.basename(tmpobj.name)).code(201);
+          await handleFileUpload(tmp_path, payload.filepond[1]);
+          return h.response(Path.basename(tmp_path)).code(201);
         }
         catch (err) {
           return Boom.serverUnavailable('Upload Error', err);
