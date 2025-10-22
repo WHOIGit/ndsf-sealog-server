@@ -16,6 +16,7 @@
     "start-test": "lab -v **/*.test.js",
     "start-devel": "NODE_ENV=development node server.js",
     "start:server": "nodemon server.js",
+    "integration-test": "newman run integration-tests/api_tests.postman_collection.json",
     "lint": "eslint . --ext .js",
     "lint-fix": "eslint . --ext .js --fix"
   },
@@ -59,6 +60,7 @@
     "@hapi/lab": "^26.0.0",
     "blipp": "^4.0.2",
     "eslint": "^9.20.1",
-    "eslint-plugin-import": "^2.31.0"
+    "eslint-plugin-import": "^2.31.0",
+    "newman": "^6.2.1"
   }
 }

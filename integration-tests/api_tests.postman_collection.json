@@ -427,6 +427,168 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Create Hidden Cruise",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.environment.set(\"hiddenCruiseId\", jsonData.insertedId);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains cruise ID\", function () {",
+									"    pm.expect(jsonData).to.have.property('insertedId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cruise_id\": \"hidden-cruise\",\n  \"start_ts\": \"2023-06-01T00:00:00.000Z\",\n  \"stop_ts\": \"2023-06-10T00:00:00.000Z\",\n  \"cruise_location\": \"Hidden Location\",\n  \"cruise_hidden\": true,\n  \"cruise_additional_meta\": {\n    \"cruise_name\": \"Hidden Cruise\",\n    \"cruise_vessel\": \"Hidden Vessel\"\n  },\n  \"cruise_tags\": [\n    \"hidden-tag\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/cruises",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"cruises"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Hidden Lowering",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.environment.set(\"hiddenLoweringId\", jsonData.insertedId);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains lowering ID\", function () {",
+									"    pm.expect(jsonData).to.have.property('insertedId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lowering_id\": \"hidden-lowering\",\n  \"start_ts\": \"2023-06-05T00:00:00.000Z\",\n  \"stop_ts\": \"2023-06-06T00:00:00.000Z\",\n  \"lowering_location\": \"Hidden Location\",\n  \"lowering_hidden\": true,\n  \"lowering_additional_meta\": {},\n  \"lowering_tags\": [\n    \"hidden-tag\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Hidden Event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.environment.set(\"hiddenEventId\", jsonData.insertedId);",
+									"",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains event ID\", function () {",
+									"    pm.expect(jsonData).to.have.property('insertedId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_author\": \"Admin\",\n  \"ts\": \"2023-06-05T12:00:00.000Z\",\n  \"event_value\": \"Hidden Event\",\n  \"event_options\": [\n    {\n      \"event_option_name\": \"Hidden Option\",\n      \"event_option_value\": \"Hidden Value\"\n    }\n  ],\n  \"event_free_text\": \"This event is in a hidden lowering\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -1299,6 +1461,53 @@
 					"response": []
 				},
 				{
+					"name": "Get Lowering by Lowering ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains lowering details\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.eql(pm.environment.get('loweringId'));",
+									"    pm.expect(jsonData.lowering_id).to.eql(\"example-lowering\");",
+									"    pm.expect(jsonData.lowering_location).to.eql(\"Example Location\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings/byloweringid/example-lowering",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings",
+								"byloweringid",
+								"example-lowering"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update Lowering",
 					"event": [
 						{
@@ -1783,6 +1992,61 @@
 								"v1",
 								"events",
 								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event with Aux Data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains event details with aux_data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.eql(pm.environment.get('eventId'));",
+									"    pm.expect(jsonData.event_value).to.eql(\"Example Event\");",
+									"    pm.expect(jsonData).to.have.property('aux_data');",
+									"    pm.expect(jsonData.aux_data).to.be.an('array');",
+									"    pm.expect(jsonData.aux_data.length).to.be.greaterThan(0);",
+									"    pm.expect(jsonData.aux_data[0].data_source).to.eql(\"Example Data Source\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/{{eventId}}?aux_data=true",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"{{eventId}}"
+							],
+							"query": [
+								{
+									"key": "aux_data",
+									"value": "true"
+								}
 							]
 						}
 					},
@@ -2480,10 +2744,10 @@
 			]
 		},
 		{
-			"name": "Event Exports",
+			"name": "Anonymous Access to Public Resources",
 			"item": [
 				{
-					"name": "Get Event Exports",
+					"name": "Get Public Events by Cruise",
 					"event": [
 						{
 							"listen": "test",
@@ -2504,14 +2768,9 @@
 					],
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{jwt}}"
-							}
-						],
+						"header": [],
 						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/event_exports",
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{cruiseId}}",
 							"host": [
 								"{{baseURL}}"
 							],
@@ -2519,96 +2778,7 @@
 								"sealog-server",
 								"api",
 								"v1",
-								"event_exports"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Event Export",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response contains event export details\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.id).to.eql(pm.environment.get('eventId'));",
-									"    pm.expect(jsonData.event_value).to.eql(\"Example Event\");",
-									"    pm.expect(jsonData.event_free_text).to.eql(\"Updated free text\");",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/event_exports/{{eventId}}",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"event_exports",
-								"{{eventId}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Event Exports by Cruise",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response is an array\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/event_exports/bycruise/{{cruiseId}}",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"event_exports",
+								"events",
 								"bycruise",
 								"{{cruiseId}}"
 							]
@@ -2617,7 +2787,7 @@
 					"response": []
 				},
 				{
-					"name": "Get Event Exports by Lowering",
+					"name": "Get Public Events by Lowering",
 					"event": [
 						{
 							"listen": "test",
@@ -2638,14 +2808,9 @@
 					],
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{jwt}}"
-							}
-						],
+						"header": [],
 						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/event_exports/bylowering/{{loweringId}}",
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{loweringId}}",
 							"host": [
 								"{{baseURL}}"
 							],
@@ -2653,7 +2818,7 @@
 								"sealog-server",
 								"api",
 								"v1",
-								"event_exports",
+								"events",
 								"bylowering",
 								"{{loweringId}}"
 							]
@@ -2664,17 +2829,248 @@
 			]
 		},
 		{
-			"name": "Guest Deny Events",
+			"name": "Anonymous Deny Hidden Resources",
 			"item": [
 				{
-					"name": "Get Events",
+					"name": "Get Events by Hidden Cruise",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{hiddenCruiseId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bycruise",
+								"{{hiddenCruiseId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Anonymous Get Events by Hidden Lowering",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{hiddenLoweringId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bylowering",
+								"{{hiddenLoweringId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Anonymous Get Events by Hidden Cruise Count",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{hiddenCruiseId}}/count",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bycruise",
+								"{{hiddenCruiseId}}",
+								"count"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Anonymous Get Events by Hidden Lowering Count",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{hiddenLoweringId}}/count",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bylowering",
+								"{{hiddenLoweringId}}",
+								"count"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Anonymous Create Lowerin Denied",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"",
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"var jsonData = JSON.parse(responseBody);",
+									"pm.test(\"Response contains lowering ID\", function () {",
+									"    pm.expect(jsonData).not.to.have.property('insertedId');",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lowering_id\": \"example-lowering\",\n  \"start_ts\": \"2023-05-05T00:00:00.000Z\",\n  \"stop_ts\": \"2023-05-06T00:00:00.000Z\",\n  \"lowering_additional_meta\": {},\n  \"lowering_tags\": [\n    \"example-tag-1\",\n    \"example-tag-2\"\n  ],\n  \"lowering_location\": \"Example Location\",\n  \"lowering_hidden\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Anonymous Create Event Denied",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_author\": \"Anonymous\",\n  \"ts\": \"2023-05-05T13:00:00.000Z\",\n  \"event_value\": \"Unauthorized Event\",\n  \"event_options\": [],\n  \"event_free_text\": \"This should fail\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+								{
+					"name": "Anonymous Get Events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
 									"});",
 									""
 								],
@@ -2685,12 +3081,6 @@
 					],
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"url": {
 							"raw": "{{baseURL}}/sealog-server/api/v1/events",
 							"host": [
@@ -2739,30 +3129,23 @@
 					"response": []
 				},
 				{
-					"name": "Get Event",
+					"name": "Anonymous Get Event by ID",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
 									"});",
 									""
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"url": {
 							"raw": "{{baseURL}}/sealog-server/api/v1/events/{{eventId}}",
 							"host": [
@@ -2780,14 +3163,14 @@
 					"response": []
 				},
 				{
-					"name": "Update Event",
+					"name": "Anonymous Update Event",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
 									"});"
 								],
 								"type": "text/javascript",
@@ -2797,12 +3180,6 @@
 					],
 					"request": {
 						"method": "PATCH",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"event_free_text\": \"Updated free text\"\n}",
@@ -2829,30 +3206,27 @@
 					"response": []
 				},
 				{
-					"name": "Get Events Count",
+					"name": "Anonymous Get Events Count",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
 									"});",
-									""
+									"",
+									"pm.test(\"Response contains events count\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('events');",
+									"});"
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"url": {
 							"raw": "{{baseURL}}/sealog-server/api/v1/events/count",
 							"host": [
@@ -2870,351 +3244,15 @@
 					"response": []
 				},
 				{
-					"name": "Get Events by Cruise",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{cruiseId}}",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"events",
-								"bycruise",
-								"{{cruiseId}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Events by Lowering",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{loweringId}}",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"events",
-								"bylowering",
-								"{{loweringId}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Events by Cruise Count",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									"",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{cruiseId}}/count",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"events",
-								"bycruise",
-								"{{cruiseId}}",
-								"count"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Events by Lowering Count",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{loweringId}}/count",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"events",
-								"bylowering",
-								"{{loweringId}}",
-								"count"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Guest Deny Create",
-			"item": [
-				{
-					"name": "Create Cruise",
+					"name": "Anonymous Create Event Template",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
 									"",
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									"var jsonData = JSON.parse(responseBody);",
-									"pm.test(\"Response contains cruise ID\", function () {",
-									"    pm.expect(jsonData).not.to.have.property('insertedId');",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"cruise_id\": \"example-cruise\",\n  \"start_ts\": \"2023-05-01T00:00:00.000Z\",\n  \"stop_ts\": \"2023-05-10T00:00:00.000Z\",\n  \"cruise_location\": \"Example Location\",\n  \"cruise_additional_meta\": {\n    \"cruise_name\": \"Example Cruise\",\n    \"cruise_vessel\": \"Example Vessel\",\n    \"cruise_pi\": \"Example PI\",\n    \"cruise_departure_location\": \"Example Departure\",\n    \"cruise_arrival_location\": \"Example Arrival\"\n  },\n  \"cruise_tags\": [\n    \"example-tag-1\",\n    \"example-tag-2\"\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/cruises",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"cruises"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Lowering",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"",
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									"var jsonData = JSON.parse(responseBody);",
-									"pm.test(\"Response contains lowering ID\", function () {",
-									"    pm.expect(jsonData).not.to.have.property('insertedId');",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"lowering_id\": \"example-lowering\",\n  \"start_ts\": \"2023-05-05T00:00:00.000Z\",\n  \"stop_ts\": \"2023-05-06T00:00:00.000Z\",\n  \"lowering_additional_meta\": {},\n  \"lowering_tags\": [\n    \"example-tag-1\",\n    \"example-tag-2\"\n  ],\n  \"lowering_location\": \"Example Location\",\n  \"lowering_hidden\": false\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"lowerings"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"",
-									"",
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
-									"});",
-									"var jsonData = JSON.parse(responseBody);",
-									"pm.test(\"Response contains event ID\", function () {",
-									"    pm.expect(jsonData).not.to.have.property('insertedId');",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"event_author\": \"Example Author\",\n  \"ts\": \"2023-05-05T12:00:00.000Z\",\n  \"event_value\": \"Example Event\",\n  \"event_options\": [\n    {\n      \"event_option_name\": \"Example Option\",\n      \"event_option_value\": \"Example Value\"\n    }\n  ],\n  \"event_free_text\": \"Example free text\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseURL}}/sealog-server/api/v1/events",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"sealog-server",
-								"api",
-								"v1",
-								"events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Event Template",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"",
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
 									"});",
 									"var jsonData = JSON.parse(responseBody);",
 									"pm.test(\"Response contains event template ID\", function () {",
@@ -3228,12 +3266,6 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"event_name\": \"Example Event Template\",\n  \"event_value\": \"Example Value\",\n  \"event_free_text_required\": false,\n  \"system_template\": false,\n  \"template_categories\": [\n    \"Example Category\"\n  ],\n  \"disabled\": false,\n  \"event_options\": [\n    {\n      \"event_option_name\": \"Example Option\",\n      \"event_option_type\": \"string\",\n      \"event_option_default_value\": \"Example Default\",\n      \"event_option_values\": [\n        \"Example Value 1\",\n        \"Example Value 2\"\n      ],\n      \"event_option_allow_freeform\": false,\n      \"event_option_required\": false\n    }\n  ]\n}",
@@ -3266,8 +3298,8 @@
 							"script": {
 								"exec": [
 									"",
-									"pm.test(\"Status code is 403\", function () {",
-									"    pm.response.to.have.status(403);",
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
 									"});",
 									"var jsonData = JSON.parse(responseBody);",
 									"pm.test(\"Response contains event auxiliary data ID\", function () {",
@@ -3281,12 +3313,6 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "authorization",
-								"value": "{{guest_jwt}}"
-							}
-						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"data_source\": \"Example Data Source\",\n  \"data_array\": [\n    {\n      \"data_name\": \"Example Data\",\n      \"data_value\": \"Example Value\",\n      \"data_uom\": \"Example Unit\"\n    }\n  ]\n}",
