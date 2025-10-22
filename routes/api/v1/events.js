@@ -68,6 +68,9 @@ const _renameAndClearFields = (doc) => {
     doc.id = doc.id.valueOf();
   }
 
+  // Remove event_id field (used in aux_data joins)
+  delete doc.event_id;
+
   return doc;
 };
 
@@ -175,6 +178,10 @@ const eventParam = Joi.object({
   id: Joi.string().length(24).required()
 }).label('eventParam');
 
+const eventByIdQuery = Joi.object({
+  aux_data: Joi.boolean().optional()
+}).optional().label('eventByIdQuery');
+
 const eventQuery = Joi.object({
   format: Joi.string().optional(),
   offset: Joi.number().integer().min(0).optional(),
@@ -215,6 +222,30 @@ const eventSuccessResponse = Joi.object({
   })),
   event_free_text: Joi.string().allow('')
 }).label('eventSuccessResponse');
+
+const specificEventSuccessResponse = Joi.object({
+  id: Joi.object(),
+  event_author: Joi.string(),
+  ts: Joi.date().iso(),
+  event_value: Joi.string(),
+  event_options: Joi.array().items(Joi.object({
+    event_option_name: Joi.string(),
+    event_option_value: Joi.string().allow('')
+  })),
+  event_free_text: Joi.string().allow(''),
+  aux_data: Joi.array().items(Joi.object({
+    id: Joi.object(),
+    data_source: Joi.string(),
+    data_array: Joi.array().items(Joi.object({
+      data_name: Joi.string(),
+      data_value: Joi.alternatives().try(
+        Joi.string(),
+        Joi.number()
+      ),
+      data_uom: Joi.string()
+    }))
+  }))
+}).label('specificEventSuccessResponse');
 
 const eventCreatePayload = Joi.object({
   id: Joi.string().length(24).optional(),
@@ -994,6 +1025,42 @@ exports.plugin = {
 
         const query = { _id: new ObjectID(request.params.id) };
 
+        // If aux_data is requested, use aggregation to include auxiliary data
+        if (request.query.aux_data) {
+          const lookup = {
+            from: eventAuxDataTable,
+            localField: "_id",
+            foreignField: "event_id",
+            as: "aux_data"
+          };
+
+          const aggregate = [];
+          aggregate.push({ $match: query });
+          aggregate.push({ $lookup: lookup });
+
+          try {
+            const results = await db.collection(eventsTable).aggregate(aggregate).toArray();
+
+            if (!results || results.length === 0) {
+              return Boom.notFound('No record found for id: ' + request.params.id);
+            }
+
+            const result = _renameAndClearFields(results[0]);
+
+            // Rename and clear fields in aux_data as well
+            if (result.aux_data && result.aux_data.length > 0) {
+              result.aux_data.forEach(_renameAndClearFields);
+            }
+
+            return h.response(result).code(200);
+          }
+          catch (err) {
+            console.log(err);
+            return Boom.serverUnavailable('database error');
+          }
+        }
+
+        // Default behavior: return event without aux_data
         try {
           const result = await db.collection(eventsTable).findOne(query);
 
@@ -1010,15 +1077,20 @@ exports.plugin = {
       },
       config: {
         validate: {
-          params: eventParam
+          params: eventParam,
+          query: eventByIdQuery
         },
         response: {
           status: {
-            200: eventSuccessResponse
+            200: Joi.alternatives().try(
+              eventSuccessResponse,
+              specificEventSuccessResponse
+            )
           }
         },
-        description: 'Return an event based on the event id',
-        notes: '<p>No authorization required - publicly accessible</p>',
+        description: 'Return an event based on the event id, optionally with auxiliary data',
+        notes: '<p>No authorization required - publicly accessible</p>\
+          <p>Use query parameter <code>aux_data=true</code> to include associated auxiliary data.</p>',
         tags: ['events','api']
       }
     });
