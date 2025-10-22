@@ -190,12 +190,15 @@ exports.plugin = {
           return Boom.notFound('cruise not found for that id');
         }
 
-        if (cruise.cruise_hidden && useAccessControl) {
-          if (request.auth.credentials.scope.includes("admin")) {
-            // permitted
-          } else if ((cruise.cruise_access_list || []).includes(request.auth.credentials.id)) {
-            // permitted
-          } else {
+        // Check if user can access this cruise
+        if (cruise.cruise_hidden) {
+          // If not authenticated, cannot access hidden cruises
+          if (!request.auth.credentials || !request.auth.credentials.scope) {
+            return Boom.unauthorized('Cannot access hidden cruise without authentication');
+          }
+          // If authenticated but not admin, check access list
+          if (!request.auth.credentials.scope.includes("admin") &&
+              (useAccessControl && !((cruise.cruise_access_list || []).includes(request.auth.credentials.id)))) {
             return Boom.unauthorized('User not authorized to retrieve this cruise');
           }
         }
@@ -284,10 +287,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventExportQuery
         },
@@ -320,12 +322,15 @@ exports.plugin = {
           return Boom.notFound('lowering not found for that id');
         }
 
-        if (lowering.lowering_hidden && useAccessControl) {
-          if (request.auth.credentials.scope.includes("admin")) {
-            // permitted
-          } else if ((lowering.lowering_access_list || []).includes(request.auth.credentials.id)) {
-            // permitted
-          } else {
+        // Check if user can access this lowering
+        if (lowering.lowering_hidden) {
+          // If not authenticated, cannot access hidden lowerings
+          if (!request.auth.credentials || !request.auth.credentials.scope) {
+            return Boom.unauthorized('Cannot access hidden lowering without authentication');
+          }
+          // If authenticated but not admin, check access list
+          if (!request.auth.credentials.scope.includes("admin") &&
+              (useAccessControl && !((lowering.lowering_access_list || []).includes(request.auth.credentials.id)))) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
         }
@@ -413,10 +418,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventExportQuery
         },
@@ -427,195 +431,10 @@ exports.plugin = {
       }
     });
 
-    server.route({
-      method: 'GET',
-      path: '/event_exports',
-      async handler(request, h) {
-
-        const db = request.mongo.db;
-        // const ObjectID = request.mongo.ObjectID;
-      
-        //Data source filtering
-        if (request.query.datasource) {
-
-          const datasource_query = {};
-
-          if (Array.isArray(request.query.datasource)) {
-            datasource_query.data_source  = { $in: request.query.datasource };
-          }
-          else {
-            datasource_query.data_source  = request.query.datasource;
-          }
-
-          let eventIDs = [];
-
-          try {
-            const collection = await db.collection(eventAuxDataTable).find(datasource_query, { _id: 0, event_id: 1 }).toArray();
-            eventIDs = collection.map((x) => x.event_id);
-          }
-          catch (err) {
-            console.log(err);
-            return Boom.serverUnavailable('database error');
-          }
-
-          const query = _buildEventsQuery(request);
-          query._id = { $in: eventIDs };
-          const offset = (request.query.offset) ? request.query.offset : 0;
-
-          const lookup = {
-            from: eventAuxDataTable,
-            localField: "_id",
-            foreignField: "event_id",
-            as: "aux_data"
-          };
-
-          const aggregate = [];
-          aggregate.push({ $match: query });
-          aggregate.push({ $lookup: lookup });
-          aggregate.push({ $sort: { ts: 1 } });
-
-          if (request.query.limit) { 
-            aggregate.push({ $limit: request.query.limit });
-          }
-
-          try {
-            const results = await db.collection(eventsTable).aggregate(aggregate, { allowDiskUse: true }).skip(offset).toArray();
-
-            if (results.length > 0) {
-              results.forEach(_renameAndClearFields);
-              return h.response(results).code(200);
-            }
- 
-            return Boom.notFound('No records found');
-            
-          }
-          catch (err) {
-            console.log(err);
-            return Boom.serverUnavailable('database error');
-          }
-        }
-        else {
-
-          const query = _buildEventsQuery(request);
-          const offset = (request.query.offset) ? request.query.offset : 0;
-
-          const lookup = {
-            from: eventAuxDataTable,
-            localField: "_id",
-            foreignField: "event_id",
-            as: "aux_data"
-          };
-
-          const aggregate = [];
-          aggregate.push({ $match: query });
-          aggregate.push({ $lookup: lookup });
-          aggregate.push({ $sort: { ts: 1 } });
-
-          if (request.query.limit) {
-            aggregate.push({ $limit: request.query.limit });
-          }
-
-          // console.log("aggregate:", aggregate);
-
-          try {
-            const results = await db.collection(eventsTable).aggregate(aggregate, { allowDiskUse: true }).skip(offset).toArray();
-
-            if (results.length > 0) {
-              results.forEach(_renameAndClearFields);
-
-              if (request.query.format && request.query.format === "csv") {
-                const { events } = flattenEventJSON(results);
-                csv_results = convertToCSV(events, request.query.use_renav);
-    
-                return h.response(csv_results)
-                  .type('text/html').code(200);
-              }
-
-              return h.response(results).code(200);
-            }
-
-            return Boom.notFound('No records found');
-          }
-          catch (err) {
-            console.log(err);
-            return Boom.serverUnavailable('database error');
-          }
-        }
-      },
-      config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
-        validate: {
-          headers: authorizationHeader,
-          query: eventExportQuery
-        },
-        description: 'Export events merged with their aux_data based on the query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
-        tags: ['event_exports','api']
-      }
-    });
-
-    server.route({
-      method: 'GET',
-      path: '/event_exports/{id}',
-      async handler(request, h) {
-
-        const db = request.mongo.db;
-        const ObjectID = request.mongo.ObjectID;
-      
-        const query = { _id: new ObjectID(request.params.id) };
-
-        const lookup = {
-          from: eventAuxDataTable,
-          localField: "_id",
-          foreignField: "event_id",
-          as: "aux_data"
-        };
-
-        const aggregate = [];
-        aggregate.push({ $match: query });
-        aggregate.push({ $lookup: lookup });
-
-        // console.log(aggregate)
-
-        try {
-          const results = await db.collection(eventsTable).aggregate(aggregate, { allowDiskUse: true }).toArray();
-
-          if (results.length > 0) {
-            results.forEach(_renameAndClearFields);
-            return h.response(results[0]).code(200);
-          }
- 
-          return Boom.notFound('No records found');
-          
-        }
-        catch (err) {
-          console.log(err);
-          return Boom.serverUnavailable('database error');
-        }
-      },
-      config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
-        validate: {
-          headers: authorizationHeader,
-          params: eventParam
-        },
-        response: {
-          status: {
-            200: eventExportSuccessResponse
-          }
-        },
-        description: 'Export an event merged with its aux_data based on event id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
-        tags: ['event_exports','api']
-      }
-    });
+    // REMOVED: GET /event_exports and GET /event_exports/{id} routes
+    // These routes allowed exporting events by arbitrary timestamp ranges without
+    // checking if the parent cruise/lowering was hidden, creating a data leak.
+    // Users should use /event_exports/bycruise/{id} or /event_exports/bylowering/{id}
+    // which properly enforce hidden data access controls.
   }
 };

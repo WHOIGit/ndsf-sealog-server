@@ -210,29 +210,31 @@ exports.plugin = {
 
         const query = {};
 
-        //Hidden filtering
+        // Hidden filtering
         if (typeof request.query.hidden !== "undefined") {
-
-          if (request.auth.credentials.scope.includes('admin')) {
+          // If authenticated and admin, allow filtering by hidden
+          if (request.auth.credentials && request.auth.credentials.scope.includes('admin')) {
             query.cruise_hidden = request.query.hidden;
           }
+          // If trying to access hidden but not authenticated or not admin
           else if (request.query.hidden) {
             return Boom.unauthorized('User not authorized to retrieve hidden cruises');
           }
+          // Explicitly requesting non-hidden
           else {
             query.cruise_hidden = false;
           }
         }
         else {
-          if (!request.auth.credentials.scope.includes('admin')) {
+          // No hidden param specified - default to non-hidden for non-admins or unauthenticated
+          if (!request.auth.credentials || !request.auth.credentials.scope.includes('admin')) {
             query.cruise_hidden = false;
           }
         }
 
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
+        // Use access control filtering (only for authenticated non-admin users)
+        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
           query.$or = [{ cruise_hidden: query.cruise_hidden }, { cruise_access_list: request.auth.credentials.id }];
-          // query.$or = [{ cruise_hidden: query.cruise_hidden }];
           delete query.cruise_hidden;
         }
 
@@ -330,10 +332,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_cruises']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           query: cruiseQuery
         },
         response: {
@@ -345,8 +346,7 @@ exports.plugin = {
           }
         },
         description: 'Return the cruises based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['cruises','api']
       }
     });
@@ -378,11 +378,11 @@ exports.plugin = {
 
         const query = {};
 
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: query.cruise_hidden }, { cruise_access_list: request.auth.credentials.id }];
+        // Use access control filtering (only for authenticated non-admin users)
+        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
+          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
         }
-        else if (!request.auth.credentials.scope.includes('admin')) {
+        else if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
           query.cruise_hidden = false;
         }
 
@@ -427,10 +427,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_cruises']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: loweringParam,
           query: singleCruiseQuery
         },
@@ -442,9 +441,8 @@ exports.plugin = {
             )
           }
         },
-        description: 'Return the cruises based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        description: 'Return the cruise for a lowering',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['cruises','api']
       }
     });
@@ -476,11 +474,11 @@ exports.plugin = {
 
         const query = {};
 
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: query.cruise_hidden }, { cruise_access_list: request.auth.credentials.id }];
+        // Use access control filtering (only for authenticated non-admin users)
+        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
+          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
         }
-        else if (!request.auth.credentials.scope.includes('admin')) {
+        else if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
           query.cruise_hidden = false;
         }
 
@@ -525,10 +523,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_cruises']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: singleCruiseQuery
         },
@@ -540,9 +537,8 @@ exports.plugin = {
             )
           }
         },
-        description: 'Return the cruises based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        description: 'Return the cruise for an event',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['cruises','api']
       }
     });
@@ -573,8 +569,18 @@ exports.plugin = {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && result.cruise_hidden && (useAccessControl && typeof result.cruise_access_list !== 'undefined' && !result.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (result.cruise_hidden) {
+            // If not authenticated, cannot access hidden cruises
+            if (!request.auth.credentials || !request.auth.credentials.scope) {
+              return Boom.unauthorized('Cannot access hidden cruise without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof result.cruise_access_list !== 'undefined' &&
+                 !result.cruise_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this cruise');
+            }
           }
 
           cruise = result;
@@ -607,10 +613,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_cruises']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: cruiseParam,
           query: singleCruiseQuery
         },
@@ -623,8 +628,7 @@ exports.plugin = {
           }
         },
         description: 'Return the cruise based on cruise id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['cruises','api']
       }
     });
@@ -655,8 +659,18 @@ exports.plugin = {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && result.cruise_hidden && (useAccessControl && typeof result.cruise_access_list !== 'undefined' && !result.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (result.cruise_hidden) {
+            // If not authenticated, cannot access hidden cruises
+            if (!request.auth.credentials || !request.auth.credentials.scope) {
+              return Boom.unauthorized('Cannot access hidden cruise without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof result.cruise_access_list !== 'undefined' &&
+                 !result.cruise_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this cruise');
+            }
           }
 
           cruise = result;
@@ -674,18 +688,16 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_cruises']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: cruiseParam
         },
         response: {
           status: {}
         },
         description: 'Bump the cruise on the updateCruise websocket subscription',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['cruises','api']
       }
     });

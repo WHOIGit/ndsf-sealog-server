@@ -273,8 +273,18 @@ exports.plugin = {
             return Boom.badRequest('No cruise record found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (cruiseResult.cruise_hidden) {
+            // If not authenticated, cannot access hidden cruises
+            if (!request.auth.credentials) {
+              return Boom.unauthorized('Cannot access hidden cruise without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' &&
+                 !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this cruise');
+            }
           }
 
           cruise = cruiseResult;
@@ -359,10 +369,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -375,8 +384,7 @@ exports.plugin = {
           }
         },
         description: 'Export the events for a cruise based on the cruise id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -399,8 +407,18 @@ exports.plugin = {
             return Boom.badRequest('No record cruise found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (cruiseResult.cruise_hidden) {
+            // If not authenticated, cannot access hidden cruises
+            if (!request.auth.credentials) {
+              return Boom.unauthorized('Cannot access hidden cruise without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' &&
+                 !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this cruise');
+            }
           }
 
           cruise = cruiseResult;
@@ -408,10 +426,6 @@ exports.plugin = {
         catch (err) {
           console.log(err);
           return Boom.serverUnavailable('database error');
-        }
-
-        if (cruise.cruise_hidden && !request.auth.credentials.scope.includes("admin")) {
-          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
         }
 
         const query = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
@@ -477,10 +491,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -492,8 +505,7 @@ exports.plugin = {
           }
         },
         description: 'Return the number of events for a cruise based on the cruise id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -515,8 +527,18 @@ exports.plugin = {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          // Check if user can access this lowering
+          if (loweringResult.lowering_hidden) {
+            // If not authenticated, cannot access hidden lowerings
+            if (!request.auth.credentials) {
+              return Boom.unauthorized('Cannot access hidden lowering without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' &&
+                 !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this lowering');
+            }
           }
 
           lowering = loweringResult;
@@ -602,10 +624,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -618,8 +639,7 @@ exports.plugin = {
           }
         },
         description: 'Export the events for a lowering based on the lowering id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -642,8 +662,18 @@ exports.plugin = {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          // Check if user can access this lowering
+          if (loweringResult.lowering_hidden) {
+            // If not authenticated, cannot access hidden lowerings
+            if (!request.auth.credentials) {
+              return Boom.unauthorized('Cannot access hidden lowering without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' &&
+                 !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this lowering');
+            }
           }
 
           lowering = loweringResult;
@@ -716,10 +746,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -731,8 +760,7 @@ exports.plugin = {
           }
         },
         description: 'Export the number of events for a lowering based on the lowering id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -938,12 +966,7 @@ exports.plugin = {
         }
       },
       config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
         validate: {
-          headers: authorizationHeader,
           query: eventQuery
         },
         response: {
@@ -954,8 +977,7 @@ exports.plugin = {
           }
         },
         description: 'Return the number of events based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required - publicly accessible</p>',
         tags: ['events', 'api']
       }
     });
@@ -987,12 +1009,7 @@ exports.plugin = {
         }
       },
       config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
         validate: {
-          headers: authorizationHeader,
           params: eventParam
         },
         response: {
@@ -1001,8 +1018,7 @@ exports.plugin = {
           }
         },
         description: 'Return an event based on the event id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required - publicly accessible</p>',
         tags: ['events','api']
       }
     });

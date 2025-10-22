@@ -23,26 +23,6 @@ import requests
 
 from .settings import API_SERVER_URL, HEADERS, EVENT_EXPORTS_API_PATH
 
-def get_event_export(event_uid, api_server_url=API_SERVER_URL, headers=HEADERS):
-    '''
-    Return the event_export for the event with the given event_uid.
-    '''
-
-    try:
-        url = api_server_url + EVENT_EXPORTS_API_PATH + '/' + event_uid
-        req = requests.get(url, headers=headers)
-
-        if req.status_code != 404:
-            event = json.loads(req.text)
-            logging.debug(json.dumps(event))
-            return event
-
-    except Exception as error:
-        logging.debug(str(error))
-        raise error
-
-    return None
-
 
 def get_event_exports_by_cruise(cruise_uid, export_format='json', event_filter='', api_server_url=API_SERVER_URL, headers=HEADERS):
     '''
