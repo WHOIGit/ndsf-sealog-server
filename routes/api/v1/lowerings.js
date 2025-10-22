@@ -670,6 +670,91 @@ exports.plugin = {
 
     server.route({
       method: 'GET',
+      path: '/lowerings/byloweringid/{lowering_id}',
+      async handler(request, h) {
+
+        const db = request.mongo.db;
+
+        const query = { lowering_id: request.params.lowering_id };
+
+        let lowering = null;
+
+        try {
+          const result = await db.collection(loweringsTable).findOne(query);
+          if (!result) {
+            return Boom.notFound('No record found for lowering_id: ' + request.params.lowering_id);
+          }
+
+          // Check if user can access this lowering
+          if (result.lowering_hidden) {
+            // If not authenticated, cannot access hidden lowerings
+            if (!request.auth.credentials || !request.auth.credentials.scope) {
+              return Boom.unauthorized('Cannot access hidden lowering without authentication');
+            }
+            // If authenticated but not admin, check access list
+            if (!request.auth.credentials.scope.includes("admin") &&
+                (useAccessControl && typeof result.lowering_access_list !== 'undefined' &&
+                 !result.lowering_access_list.includes(request.auth.credentials.id))) {
+              return Boom.unauthorized('User not authorized to retrieve this lowering');
+            }
+          }
+
+          lowering = result;
+
+        }
+        catch (err) {
+          console.log("ERROR:", err);
+          return Boom.serverUnavailable('database error');
+        }
+
+        try {
+          lowering.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + lowering._id);
+        }
+        catch (error) {
+          lowering.lowering_additional_meta.lowering_files = [];
+        }
+
+        if (request.query.format && request.query.format === "csv") {
+
+          const flattenJSON = _flattenJSON([_renameAndClearFields(lowering)]);
+
+          const csvHeaders = _buildCSVHeaders(flattenJSON);
+
+          const csv_results = await parseAsync(flattenJSON, { fields: csvHeaders });
+
+          return h.response(csv_results).code(200);
+        }
+
+        return h.response(_renameAndClearFields(lowering)).code(200);
+      },
+      config: {
+        auth: {
+          strategy: 'jwt',
+          mode: 'try'
+        },
+        validate: {
+          params: Joi.object({
+            lowering_id: Joi.string().required()
+          }).label('loweringIdParam'),
+          query: singleLoweringQuery
+        },
+        response: {
+          status: {
+            200: Joi.alternatives().try(
+              Joi.string(),
+              (useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl
+            )
+          }
+        },
+        description: 'Return the lowering based on lowering_id',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
+        tags: ['lowerings','api']
+      }
+    });
+
+
+    server.route({
+      method: 'GET',
       path: '/lowerings/{id}/bump',
       async handler(request, h) {
 
