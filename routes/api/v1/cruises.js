@@ -234,7 +234,7 @@ exports.plugin = {
 
         // Use access control filtering (only for authenticated non-admin users)
         if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: query.cruise_hidden }, { cruise_access_list: request.auth.credentials.id }];
+          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
           delete query.cruise_hidden;
         }
 

@@ -215,7 +215,7 @@ exports.plugin = {
 
         // Use access control filtering (only for authenticated non-admin users)
         if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: query.lowering_hidden }, { lowering_access_list: request.auth.credentials.id }];
+          query.$or = [{ lowering_hidden: false }, { lowering_access_list: request.auth.credentials.id }];
           delete query.lowering_hidden;
         }
 
@@ -375,7 +375,7 @@ exports.plugin = {
 
         // Use access control filtering (only for authenticated non-admin users)
         if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: query.lowering_hidden }, { lowering_access_list: request.auth.credentials.id }];
+          query.$or = [{ lowering_hidden: false }, { lowering_access_list: request.auth.credentials.id }];
           delete query.lowering_hidden;
         }
 
