@@ -400,6 +400,8 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
+          // Use 'try' instead of 'optional' so that httponly cookies from old sessions do not
+          // raise errors when browsing anonymously.
           mode: 'try'
         },
         validate: {
@@ -1008,7 +1010,6 @@ exports.plugin = {
           }
         },
         description: 'Return the number of events based on query parameters',
-        notes: '<p>No authorization required - publicly accessible</p>',
         tags: ['events', 'api']
       }
     });
@@ -1089,8 +1090,7 @@ exports.plugin = {
           }
         },
         description: 'Return an event based on the event id, optionally with auxiliary data',
-        notes: '<p>No authorization required - publicly accessible</p>\
-          <p>Use query parameter <code>aux_data=true</code> to include associated auxiliary data.</p>',
+        notes: '<p>Use query parameter <code>aux_data=true</code> to include associated auxiliary data.</p>',
         tags: ['events','api']
       }
     });

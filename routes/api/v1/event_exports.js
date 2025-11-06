@@ -287,6 +287,8 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
+          // Use 'try' instead of 'optional' so that httponly cookies from old sessions do not
+          // raise errors when browsing anonymously.
           mode: 'try'
         },
         validate: {
