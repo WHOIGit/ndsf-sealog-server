@@ -4,8 +4,8 @@ const Joi = require('joi');
 const THRESHOLD = 120; //seconds
 
 const {
-  useAccessControl
-} = require('../../../config/email_constants');
+  checkEntityAccess
+} = require('../../../lib/access_control');
 
 const {
   eventAuxDataTable,
@@ -208,7 +208,7 @@ exports.plugin = {
             return Boom.badRequest('Cruise not found for id' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
+          if (!checkEntityAccess(cruiseResult, 'cruise', request)) {
             return Boom.unauthorized('User not authorized to retrieve this cruise');
           }
 
@@ -310,7 +310,7 @@ exports.plugin = {
             return Boom.notFound('lowering not found for that id');
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
+          if (!checkEntityAccess(loweringResult, 'lowering', request)) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 

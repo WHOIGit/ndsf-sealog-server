@@ -3,8 +3,8 @@ const Joi = require('joi');
 const { flattenEventJSON, convertToCSV } = require('./json_util');
 
 const {
-  useAccessControl
-} = require('../../../config/email_constants');
+  checkEntityAccess
+} = require('../../../lib/access_control');
 
 const {
   eventsTable,
@@ -191,16 +191,8 @@ exports.plugin = {
         }
 
         // Check if user can access this cruise
-        if (cruise.cruise_hidden) {
-          // If not authenticated, cannot access hidden cruises
-          if (!request.auth.credentials || !request.auth.credentials.scope) {
-            return Boom.unauthorized('Cannot access hidden cruise without authentication');
-          }
-          // If authenticated but not admin, check access list
-          if (!request.auth.credentials.scope.includes("admin") &&
-              (useAccessControl && !((cruise.cruise_access_list || []).includes(request.auth.credentials.id)))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
-          }
+        if (!checkEntityAccess(cruise, 'cruise', request)) {
+          return Boom.unauthorized('Not authorized to access this cruise');
         }
 
         const query = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
@@ -325,16 +317,8 @@ exports.plugin = {
         }
 
         // Check if user can access this lowering
-        if (lowering.lowering_hidden) {
-          // If not authenticated, cannot access hidden lowerings
-          if (!request.auth.credentials || !request.auth.credentials.scope) {
-            return Boom.unauthorized('Cannot access hidden lowering without authentication');
-          }
-          // If authenticated but not admin, check access list
-          if (!request.auth.credentials.scope.includes("admin") &&
-              (useAccessControl && !((lowering.lowering_access_list || []).includes(request.auth.credentials.id)))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
-          }
+        if (!checkEntityAccess(lowering, 'lowering', request)) {
+          return Boom.unauthorized('Not authorized to access this lowering');
         }
 
         const query = _buildEventsQuery(request, lowering.start_ts, lowering.stop_ts);

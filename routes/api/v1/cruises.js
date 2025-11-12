@@ -15,6 +15,11 @@ const {
 } = require('../../../config/email_constants');
 
 const {
+  initializeQuery,
+  checkEntityAccess
+} = require('../../../lib/access_control');
+
+const {
   cruisesTable,
   eventsTable,
   loweringsTable,
@@ -83,6 +88,7 @@ const _renameAndClearFields = (doc) => {
 
   return doc;
 };
+
 
 
 const authorizationHeader = Joi.object({
@@ -208,34 +214,9 @@ exports.plugin = {
         const db = request.mongo.db;
         // const ObjectID = request.mongo.ObjectID;
 
-        const query = {};
-
-        // Hidden filtering
-        if (typeof request.query.hidden !== "undefined") {
-          // If authenticated and admin, allow filtering by hidden
-          if (request.auth.credentials && request.auth.credentials.scope.includes('admin')) {
-            query.cruise_hidden = request.query.hidden;
-          }
-          // If trying to access hidden but not authenticated or not admin
-          else if (request.query.hidden) {
-            return Boom.unauthorized('User not authorized to retrieve hidden cruises');
-          }
-          // Explicitly requesting non-hidden
-          else {
-            query.cruise_hidden = false;
-          }
-        }
-        else {
-          // No hidden param specified - default to non-hidden for non-admins or unauthenticated
-          if (!request.auth.credentials || !request.auth.credentials.scope.includes('admin')) {
-            query.cruise_hidden = false;
-          }
-        }
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
-          delete query.cruise_hidden;
+        const query = initializeQuery(request, 'cruise');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
         }
 
         // Cruise ID filtering... if using this then there's no reason to use other filters
@@ -378,14 +359,9 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
-        }
-        else if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
-          query.cruise_hidden = false;
+        const query = initializeQuery(request, 'cruise');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
         }
 
         // time bounds based on lowering start/stop times
@@ -474,14 +450,9 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ cruise_hidden: false }, { cruise_access_list: request.auth.credentials.id }];
-        }
-        else if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
-          query.cruise_hidden = false;
+        const query = initializeQuery(request, 'cruise');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
         }
 
         // time bounds based on event start/stop times
@@ -572,17 +543,8 @@ exports.plugin = {
           }
 
           // Check if user can access this cruise
-          if (result.cruise_hidden) {
-            // If not authenticated, cannot access hidden cruises
-            if (!request.auth.credentials || !request.auth.credentials.scope) {
-              return Boom.unauthorized('Cannot access hidden cruise without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof result.cruise_access_list !== 'undefined' &&
-                 !result.cruise_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this cruise');
-            }
+          if (!checkEntityAccess(result, 'cruise', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this cruise');
           }
 
           cruise = result;
@@ -662,17 +624,8 @@ exports.plugin = {
           }
 
           // Check if user can access this cruise
-          if (result.cruise_hidden) {
-            // If not authenticated, cannot access hidden cruises
-            if (!request.auth.credentials || !request.auth.credentials.scope) {
-              return Boom.unauthorized('Cannot access hidden cruise without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof result.cruise_access_list !== 'undefined' &&
-                 !result.cruise_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this cruise');
-            }
+          if (!checkEntityAccess(result, 'cruise', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this cruise');
           }
 
           cruise = result;
@@ -875,7 +828,7 @@ exports.plugin = {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes('admin') && result.cruise_hidden && ( useAccessControl && typeof result.cruise_access_list !== 'undefined' && !result.cruise_access_list.includes(request.auth.credentials.id))) {
+          if (!checkEntityAccess(result, 'cruise', request)) {
             return Boom.unauthorized('User not authorized to edit this cruise');
           }
 

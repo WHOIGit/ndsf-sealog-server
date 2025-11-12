@@ -7,8 +7,8 @@ const escape = require('lodash.escape');
 const THRESHOLD = 120; //seconds
 
 const {
-  useAccessControl
-} = require('../../../config/email_constants');
+  checkEntityAccess
+} = require('../../../lib/access_control');
 
 const {
   eventsTable,
@@ -169,7 +169,6 @@ const _buildEventsQuery = (request, start_ts = new Date("1970-01-01T00:00:00.000
   return query;
 };
 
-
 const authorizationHeader = Joi.object({
   authorization: Joi.string().required()
 }).options({ allowUnknown: true }).label('authorizationHeader');
@@ -305,17 +304,8 @@ exports.plugin = {
           }
 
           // Check if user can access this cruise
-          if (cruiseResult.cruise_hidden) {
-            // If not authenticated, cannot access hidden cruises
-            if (!request.auth.credentials) {
-              return Boom.unauthorized('Cannot access hidden cruise without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' &&
-                 !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this cruise');
-            }
+          if (!checkEntityAccess(cruiseResult, 'cruise', request)) {
+            return Boom.unauthorized('Not authorized to access this cruise');
           }
 
           cruise = cruiseResult;
@@ -441,17 +431,8 @@ exports.plugin = {
           }
 
           // Check if user can access this cruise
-          if (cruiseResult.cruise_hidden) {
-            // If not authenticated, cannot access hidden cruises
-            if (!request.auth.credentials) {
-              return Boom.unauthorized('Cannot access hidden cruise without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' &&
-                 !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this cruise');
-            }
+          if (!checkEntityAccess(cruiseResult, 'cruise', request)) {
+            return Boom.unauthorized('Not authorized to access this cruise');
           }
 
           cruise = cruiseResult;
@@ -561,17 +542,8 @@ exports.plugin = {
           }
 
           // Check if user can access this lowering
-          if (loweringResult.lowering_hidden) {
-            // If not authenticated, cannot access hidden lowerings
-            if (!request.auth.credentials) {
-              return Boom.unauthorized('Cannot access hidden lowering without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' &&
-                 !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this lowering');
-            }
+          if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
           }
 
           lowering = loweringResult;
@@ -696,17 +668,8 @@ exports.plugin = {
           }
 
           // Check if user can access this lowering
-          if (loweringResult.lowering_hidden) {
-            // If not authenticated, cannot access hidden lowerings
-            if (!request.auth.credentials) {
-              return Boom.unauthorized('Cannot access hidden lowering without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' &&
-                 !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this lowering');
-            }
+          if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
           }
 
           lowering = loweringResult;

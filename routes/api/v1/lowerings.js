@@ -15,6 +15,11 @@ const {
 } = require('../../../config/email_constants');
 
 const {
+  initializeQuery,
+  checkEntityAccess
+} = require('../../../lib/access_control');
+
+const {
   cruisesTable,
   eventsTable,
   loweringsTable,
@@ -142,6 +147,7 @@ const loweringQuery = Joi.object({
   lowering_id: Joi.string().optional(),
   startTS: Joi.date().iso(),
   stopTS: Joi.date().iso(),
+  hidden: Joi.boolean().optional(),
   lowering_location: Joi.string().optional(),
   lowering_tags: Joi.alternatives().try(
     loweringTag,
@@ -189,34 +195,10 @@ exports.plugin = {
       async handler(request, h) {
 
         const db = request.mongo.db;
-        const query = {};
 
-        // Hidden filtering
-        if (typeof request.query.hidden !== "undefined") {
-          // If authenticated and admin, allow filtering by hidden
-          if (request.auth.credentials && request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = request.query.hidden;
-          }
-          // If trying to access hidden but not authenticated or not admin
-          else if (request.query.hidden) {
-            return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-          }
-          // Explicitly requesting non-hidden
-          else {
-            query.lowering_hidden = false;
-          }
-        }
-        else {
-          // No hidden param specified - default to non-hidden for non-admins or unauthenticated
-          if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = false;
-          }
-        }
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: false }, { lowering_access_list: request.auth.credentials.id }];
-          delete query.lowering_hidden;
+        const query = initializeQuery(request, 'lowering');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
         }
 
         // Lowering ID filtering... if using this then there's no reason to use other filters
@@ -349,34 +331,9 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        // Hidden filtering
-        if (typeof request.query.hidden !== "undefined") {
-          // If authenticated and admin, allow filtering by hidden
-          if (request.auth.credentials && request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = request.query.hidden;
-          }
-          // If trying to access hidden but not authenticated or not admin
-          else if (request.query.hidden) {
-            return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-          }
-          // Explicitly requesting non-hidden
-          else {
-            query.lowering_hidden = false;
-          }
-        }
-        else {
-          // No hidden param specified - default to non-hidden for non-admins or unauthenticated
-          if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = false;
-          }
-        }
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: false }, { lowering_access_list: request.auth.credentials.id }];
-          delete query.lowering_hidden;
+        const query = initializeQuery(request, 'lowering');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
         }
 
         // Lowering_id filtering
@@ -508,14 +465,9 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        // Use access control filtering (only for authenticated non-admin users)
-        if (useAccessControl && request.auth.credentials && request.auth.credentials.scope && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: false }, { lowering_access_list: request.auth.credentials.id }];
-        }
-        else if (!request.auth.credentials || !request.auth.credentials.scope || !request.auth.credentials.scope.includes('admin')) {
-          query.lowering_hidden = false;
+        const query = initializeQuery(request, 'lowering');
+        if (!query) {
+          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
         }
 
         // time bounds based on event start/stop times
@@ -605,17 +557,8 @@ exports.plugin = {
           }
 
           // Check if user can access this lowering
-          if (result.lowering_hidden) {
-            // If not authenticated, cannot access hidden lowerings
-            if (!request.auth.credentials || !request.auth.credentials.scope) {
-              return Boom.unauthorized('Cannot access hidden lowering without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof result.lowering_access_list !== 'undefined' &&
-                 !result.lowering_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this lowering');
-            }
+          if (!checkEntityAccess(result, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
           lowering = result;
@@ -688,17 +631,8 @@ exports.plugin = {
           }
 
           // Check if user can access this lowering
-          if (result.lowering_hidden) {
-            // If not authenticated, cannot access hidden lowerings
-            if (!request.auth.credentials || !request.auth.credentials.scope) {
-              return Boom.unauthorized('Cannot access hidden lowering without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof result.lowering_access_list !== 'undefined' &&
-                 !result.lowering_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this lowering');
-            }
+          if (!checkEntityAccess(result, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
           lowering = result;
@@ -781,17 +715,8 @@ exports.plugin = {
           }
 
           // Check if user can access this lowering
-          if (result.lowering_hidden) {
-            // If not authenticated, cannot access hidden lowerings
-            if (!request.auth.credentials || !request.auth.credentials.scope) {
-              return Boom.unauthorized('Cannot access hidden lowering without authentication');
-            }
-            // If authenticated but not admin, check access list
-            if (!request.auth.credentials.scope.includes("admin") &&
-                (useAccessControl && typeof result.lowering_access_list !== 'undefined' &&
-                 !result.lowering_access_list.includes(request.auth.credentials.id))) {
-              return Boom.unauthorized('User not authorized to retrieve this lowering');
-            }
+          if (!checkEntityAccess(result, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
           lowering = result;
@@ -987,7 +912,7 @@ exports.plugin = {
             return Boom.badRequest('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes('admin') && result.lowering_hidden && ( useAccessControl && typeof result.lowering_access_list !== 'undefined' && !result.lowering_access_list.includes(request.auth.credentials.id))) {
+          if (!checkEntityAccess(result, 'lowering', request)) {
             return Boom.unauthorized('User not authorized to edit this lowering');
           }
 
