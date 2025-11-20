@@ -15,6 +15,11 @@ const {
 } = require('../../../config/email_constants');
 
 const {
+  initializeQuery,
+  checkEntityAccess
+} = require('../../../lib/access_control');
+
+const {
   cruisesTable,
   eventsTable,
   loweringsTable,
@@ -142,6 +147,7 @@ const loweringQuery = Joi.object({
   lowering_id: Joi.string().optional(),
   startTS: Joi.date().iso(),
   stopTS: Joi.date().iso(),
+  hidden: Joi.boolean().optional(),
   lowering_location: Joi.string().optional(),
   lowering_tags: Joi.alternatives().try(
     loweringTag,
@@ -189,33 +195,8 @@ exports.plugin = {
       async handler(request, h) {
 
         const db = request.mongo.db;
-        const query = {};
 
-        //Hidden filtering
-        if (typeof request.query.hidden !== "undefined") {
-
-          if (request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = request.query.hidden;
-          }
-          else if (request.query.hidden) {
-            return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-          }
-          else {
-            query.lowering_hidden = false;
-          }
-        }
-        else {
-          if (!request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = false;
-          }
-        }
-
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: query.lowering_hidden }, { lowering_access_list: request.auth.credentials.id }];
-          // query.$or = [{ lowering_hidden: query.lowering_hidden }];
-          delete query.lowering_hidden;
-        }
+        const query = initializeQuery(request, 'lowering');
 
         // Lowering ID filtering... if using this then there's no reason to use other filters
         if (request.query.lowering_id) {
@@ -302,10 +283,11 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_lowerings']
+          // Use 'try' instead of 'optional' so that httponly cookies from old sessions do not
+          // raise errors when browsing anonymously.
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           query: loweringQuery
         },
         response: {
@@ -317,8 +299,7 @@ exports.plugin = {
           }
         },
         description: 'Return the lowerings based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['lowerings','api']
       }
     });
@@ -347,27 +328,7 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        //Hidden filtering
-        if (typeof request.query.hidden !== "undefined") {
-
-          if (request.auth.credentials.scope.includes('admin')) {
-            query.lowering_hidden = request.query.hidden;
-          }
-          else if (request.query.hidden) {
-            return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-          }
-          else {
-            query.lowering_hidden = false;
-          }
-        }
-
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: query.lowering_hidden }, { lowering_access_list: request.auth.credentials.id }];
-          delete query.lowering_hidden;
-        }
+        const query = initializeQuery(request, 'lowering');
 
         // Lowering_id filtering
         if (request.query.lowering_id) {
@@ -453,10 +414,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_lowerings']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: cruiseParam,
           query: loweringQuery
         },
@@ -468,9 +428,8 @@ exports.plugin = {
             )
           }
         },
-        description: 'Return the lowerings based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        description: 'Return the lowerings for a cruise',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['lowerings','api']
       }
     });
@@ -500,15 +459,7 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = {};
-
-        // use access control filtering
-        if (useAccessControl && !request.auth.credentials.scope.includes('admin')) {
-          query.$or = [{ lowering_hidden: query.lowering_hidden }, { lowering_access_list: request.auth.credentials.id }];
-        }
-        else if (!request.auth.credentials.scope.includes('admin')) {
-          query.lowering_hidden = false;
-        }
+        const query = initializeQuery(request, 'lowering');
 
         // time bounds based on event start/stop times
         query.$and = [{ start_ts: { $lte: event.ts } }, { stop_ts: { $gte: event.ts } }];
@@ -551,10 +502,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_lowerings']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: singleLoweringQuery
         },
@@ -566,9 +516,8 @@ exports.plugin = {
             )
           }
         },
-        description: 'Return the lowerings based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        description: 'Return the lowering for an event',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['lowerings','api']
       }
     });
@@ -598,12 +547,13 @@ exports.plugin = {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && result.lowering_hidden && (useAccessControl && typeof result.lowering_access_list !== 'undefined' && !result.lowering_access_list.includes(request.auth.credentials.id))) {
+          // Check if user can access this lowering
+          if (!checkEntityAccess(result, 'lowering', request)) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
           lowering = result;
-        
+
         }
         catch (err) {
           console.log("ERROR:", err);
@@ -633,10 +583,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_lowerings']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: loweringParam,
           query: singleLoweringQuery
         },
@@ -649,8 +598,83 @@ exports.plugin = {
           }
         },
         description: 'Return the lowering based on lowering id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
+        tags: ['lowerings','api']
+      }
+    });
+
+
+    server.route({
+      method: 'GET',
+      path: '/lowerings/byloweringid/{lowering_id}',
+      async handler(request, h) {
+
+        const db = request.mongo.db;
+
+        const query = { lowering_id: request.params.lowering_id };
+
+        let lowering = null;
+
+        try {
+          const result = await db.collection(loweringsTable).findOne(query);
+          if (!result) {
+            return Boom.notFound('No record found for lowering_id: ' + request.params.lowering_id);
+          }
+
+          // Check if user can access this lowering
+          if (!checkEntityAccess(result, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          }
+
+          lowering = result;
+
+        }
+        catch (err) {
+          console.log("ERROR:", err);
+          return Boom.serverUnavailable('database error');
+        }
+
+        try {
+          lowering.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + lowering._id);
+        }
+        catch (error) {
+          lowering.lowering_additional_meta.lowering_files = [];
+        }
+
+        if (request.query.format && request.query.format === "csv") {
+
+          const flattenJSON = _flattenJSON([_renameAndClearFields(lowering)]);
+
+          const csvHeaders = _buildCSVHeaders(flattenJSON);
+
+          const csv_results = await parseAsync(flattenJSON, { fields: csvHeaders });
+
+          return h.response(csv_results).code(200);
+        }
+
+        return h.response(_renameAndClearFields(lowering)).code(200);
+      },
+      config: {
+        auth: {
+          strategy: 'jwt',
+          mode: 'try'
+        },
+        validate: {
+          params: Joi.object({
+            lowering_id: Joi.string().required()
+          }).label('loweringIdParam'),
+          query: singleLoweringQuery
+        },
+        response: {
+          status: {
+            200: Joi.alternatives().try(
+              Joi.string(),
+              (useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl
+            )
+          }
+        },
+        description: 'Return the lowering based on lowering_id',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['lowerings','api']
       }
     });
@@ -681,12 +705,13 @@ exports.plugin = {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && result.lowering_hidden && (useAccessControl && typeof result.lowering_access_list !== 'undefined' && !result.lowering_access_list.includes(request.auth.credentials.id))) {
+          // Check if user can access this lowering
+          if (!checkEntityAccess(result, 'lowering', request)) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
           lowering = result;
-        
+
         }
         catch (err) {
           console.log("ERROR:", err);
@@ -701,18 +726,16 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_lowerings']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: loweringParam
         },
         response: {
           status: {}
         },
         description: 'Bump the lowering on the updateLowering websocket subscription',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['lowerings','api']
       }
     });
@@ -880,7 +903,7 @@ exports.plugin = {
             return Boom.badRequest('No record found for id: ' + request.params.id);
           }
 
-          if (!request.auth.credentials.scope.includes('admin') && result.lowering_hidden && ( useAccessControl && typeof result.lowering_access_list !== 'undefined' && !result.lowering_access_list.includes(request.auth.credentials.id))) {
+          if (!checkEntityAccess(result, 'lowering', request)) {
             return Boom.unauthorized('User not authorized to edit this lowering');
           }
 

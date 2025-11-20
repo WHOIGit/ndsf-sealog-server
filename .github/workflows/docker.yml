@@ -103,11 +103,11 @@ jobs:
           curl http://localhost:8000/sealog-server > /tmp/banner.txt
           grep "Welcome to sealog-server\!" /tmp/banner.txt
 
-          # Install Newman for running Postman tests
-          npm install -g newman
+          # Install dependencies
+          npm install
 
-          # Run Postman tests
-          newman run "integration-tests/api_tests.postman_collection.json"
+          # Run integration tests
+          npm run integration-test
 
           docker compose down
 

@@ -7,8 +7,8 @@ const escape = require('lodash.escape');
 const THRESHOLD = 120; //seconds
 
 const {
-  useAccessControl
-} = require('../../../config/email_constants');
+  checkEntityAccess
+} = require('../../../lib/access_control');
 
 const {
   eventsTable,
@@ -67,6 +67,9 @@ const _renameAndClearFields = (doc) => {
   if (doc.id && typeof doc.id === 'object') {
     doc.id = doc.id.valueOf();
   }
+
+  // Remove event_id field (used in aux_data joins)
+  delete doc.event_id;
 
   return doc;
 };
@@ -166,7 +169,6 @@ const _buildEventsQuery = (request, start_ts = new Date("1970-01-01T00:00:00.000
   return query;
 };
 
-
 const authorizationHeader = Joi.object({
   authorization: Joi.string().required()
 }).options({ allowUnknown: true }).label('authorizationHeader');
@@ -174,6 +176,10 @@ const authorizationHeader = Joi.object({
 const eventParam = Joi.object({
   id: Joi.string().length(24).required()
 }).label('eventParam');
+
+const eventByIdQuery = Joi.object({
+  aux_data: Joi.boolean().optional()
+}).optional().label('eventByIdQuery');
 
 const eventQuery = Joi.object({
   format: Joi.string().optional(),
@@ -215,6 +221,30 @@ const eventSuccessResponse = Joi.object({
   })),
   event_free_text: Joi.string().allow('')
 }).label('eventSuccessResponse');
+
+const specificEventSuccessResponse = Joi.object({
+  id: Joi.object(),
+  event_author: Joi.string(),
+  ts: Joi.date().iso(),
+  event_value: Joi.string(),
+  event_options: Joi.array().items(Joi.object({
+    event_option_name: Joi.string(),
+    event_option_value: Joi.string().allow('')
+  })),
+  event_free_text: Joi.string().allow(''),
+  aux_data: Joi.array().items(Joi.object({
+    id: Joi.object(),
+    data_source: Joi.string(),
+    data_array: Joi.array().items(Joi.object({
+      data_name: Joi.string(),
+      data_value: Joi.alternatives().try(
+        Joi.string(),
+        Joi.number()
+      ),
+      data_uom: Joi.string()
+    }))
+  }))
+}).label('specificEventSuccessResponse');
 
 const eventCreatePayload = Joi.object({
   id: Joi.string().length(24).optional(),
@@ -273,8 +303,9 @@ exports.plugin = {
             return Boom.badRequest('No cruise record found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (!checkEntityAccess(cruiseResult, 'cruise', request)) {
+            return Boom.unauthorized('Not authorized to access this cruise');
           }
 
           cruise = cruiseResult;
@@ -359,10 +390,11 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          // Use 'try' instead of 'optional' so that httponly cookies from old sessions do not
+          // raise errors when browsing anonymously.
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -375,8 +407,7 @@ exports.plugin = {
           }
         },
         description: 'Export the events for a cruise based on the cruise id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -399,8 +430,9 @@ exports.plugin = {
             return Boom.badRequest('No record cruise found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && cruiseResult.cruise_hidden && (useAccessControl && typeof cruiseResult.cruise_access_list !== 'undefined' && !cruiseResult.cruise_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this cruise');
+          // Check if user can access this cruise
+          if (!checkEntityAccess(cruiseResult, 'cruise', request)) {
+            return Boom.unauthorized('Not authorized to access this cruise');
           }
 
           cruise = cruiseResult;
@@ -408,10 +440,6 @@ exports.plugin = {
         catch (err) {
           console.log(err);
           return Boom.serverUnavailable('database error');
-        }
-
-        if (cruise.cruise_hidden && !request.auth.credentials.scope.includes("admin")) {
-          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
         }
 
         const query = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
@@ -477,10 +505,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -492,8 +519,7 @@ exports.plugin = {
           }
         },
         description: 'Return the number of events for a cruise based on the cruise id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public cruises. Hidden cruises require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -515,8 +541,9 @@ exports.plugin = {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          // Check if user can access this lowering
+          if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
           }
 
           lowering = loweringResult;
@@ -602,10 +629,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -618,8 +644,7 @@ exports.plugin = {
           }
         },
         description: 'Export the events for a lowering based on the lowering id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -642,8 +667,9 @@ exports.plugin = {
             return Boom.badRequest('No record lowering found for id: ' + request.params.id );
           }
 
-          if (!request.auth.credentials.scope.includes("admin") && loweringResult.lowering_hidden && (useAccessControl && typeof loweringResult.lowering_access_list !== 'undefined' && !loweringResult.lowering_access_list.includes(request.auth.credentials.id))) {
-            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          // Check if user can access this lowering
+          if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
           }
 
           lowering = loweringResult;
@@ -716,10 +742,9 @@ exports.plugin = {
       config: {
         auth: {
           strategy: 'jwt',
-          scope: ['admin', 'read_events']
+          mode: 'try'
         },
         validate: {
-          headers: authorizationHeader,
           params: eventParam,
           query: eventQuery
         },
@@ -731,8 +756,7 @@ exports.plugin = {
           }
         },
         description: 'Export the number of events for a lowering based on the lowering id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        notes: '<p>No authorization required for public lowerings. Hidden lowerings require authentication and access.</p>',
         tags: ['events', 'api']
       }
     });
@@ -938,12 +962,7 @@ exports.plugin = {
         }
       },
       config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
         validate: {
-          headers: authorizationHeader,
           query: eventQuery
         },
         response: {
@@ -954,8 +973,6 @@ exports.plugin = {
           }
         },
         description: 'Return the number of events based on query parameters',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
         tags: ['events', 'api']
       }
     });
@@ -972,6 +989,42 @@ exports.plugin = {
 
         const query = { _id: new ObjectID(request.params.id) };
 
+        // If aux_data is requested, use aggregation to include auxiliary data
+        if (request.query.aux_data) {
+          const lookup = {
+            from: eventAuxDataTable,
+            localField: "_id",
+            foreignField: "event_id",
+            as: "aux_data"
+          };
+
+          const aggregate = [];
+          aggregate.push({ $match: query });
+          aggregate.push({ $lookup: lookup });
+
+          try {
+            const results = await db.collection(eventsTable).aggregate(aggregate).toArray();
+
+            if (!results || results.length === 0) {
+              return Boom.notFound('No record found for id: ' + request.params.id);
+            }
+
+            const result = _renameAndClearFields(results[0]);
+
+            // Rename and clear fields in aux_data as well
+            if (result.aux_data && result.aux_data.length > 0) {
+              result.aux_data.forEach(_renameAndClearFields);
+            }
+
+            return h.response(result).code(200);
+          }
+          catch (err) {
+            console.log(err);
+            return Boom.serverUnavailable('database error');
+          }
+        }
+
+        // Default behavior: return event without aux_data
         try {
           const result = await db.collection(eventsTable).findOne(query);
 
@@ -987,22 +1040,20 @@ exports.plugin = {
         }
       },
       config: {
-        auth: {
-          strategy: 'jwt',
-          scope: ['admin', 'read_events']
-        },
         validate: {
-          headers: authorizationHeader,
-          params: eventParam
+          params: eventParam,
+          query: eventByIdQuery
         },
         response: {
           status: {
-            200: eventSuccessResponse
+            200: Joi.alternatives().try(
+              eventSuccessResponse,
+              specificEventSuccessResponse
+            )
           }
         },
-        description: 'Return an event based on the event id',
-        notes: '<p>Requires authorization via: <strong>JWT token</strong></p>\
-          <p>Available to: <strong>admin</strong>, <strong>event_manager</strong>, <strong>event_logger</strong> or <strong>event_watcher</strong></p>',
+        description: 'Return an event based on the event id, optionally with auxiliary data',
+        notes: '<p>Use query parameter <code>aux_data=true</code> to include associated auxiliary data.</p>',
         tags: ['events','api']
       }
     });
