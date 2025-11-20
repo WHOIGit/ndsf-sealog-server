@@ -215,9 +215,6 @@ exports.plugin = {
         // const ObjectID = request.mongo.ObjectID;
 
         const query = initializeQuery(request, 'cruise');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
-        }
 
         // Cruise ID filtering... if using this then there's no reason to use other filters
         if (request.query.cruise_id) {
@@ -360,9 +357,6 @@ exports.plugin = {
         }
 
         const query = initializeQuery(request, 'cruise');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
-        }
 
         // time bounds based on lowering start/stop times
         query.$and = [{ start_ts: { $lte: lowering.start_ts } }, { stop_ts: { $gte: lowering.stop_ts } }];
@@ -451,9 +445,6 @@ exports.plugin = {
         }
 
         const query = initializeQuery(request, 'cruise');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden cruises');
-        }
 
         // time bounds based on event start/stop times
         query.$and = [{ start_ts: { $lte: event.ts } }, { stop_ts: { $gte: event.ts } }];

@@ -197,9 +197,6 @@ exports.plugin = {
         const db = request.mongo.db;
 
         const query = initializeQuery(request, 'lowering');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-        }
 
         // Lowering ID filtering... if using this then there's no reason to use other filters
         if (request.query.lowering_id) {
@@ -332,9 +329,6 @@ exports.plugin = {
         }
 
         const query = initializeQuery(request, 'lowering');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-        }
 
         // Lowering_id filtering
         if (request.query.lowering_id) {
@@ -466,9 +460,6 @@ exports.plugin = {
         }
 
         const query = initializeQuery(request, 'lowering');
-        if (!query) {
-          return Boom.unauthorized('User not authorized to retrieve hidden lowerings');
-        }
 
         // time bounds based on event start/stop times
         query.$and = [{ start_ts: { $lte: event.ts } }, { stop_ts: { $gte: event.ts } }];
