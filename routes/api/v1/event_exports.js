@@ -4,7 +4,8 @@ const { flattenEventJSON, convertToCSV } = require('./json_util');
 
 const {
   checkEntityAccess,
-  findParentCruise
+  findParentCruise,
+  getHiddenLoweringRanges
 } = require('../../../lib/access_control');
 
 const {
@@ -224,6 +225,12 @@ exports.plugin = {
         catch (err) {
           console.log(err);
           return Boom.serverUnavailable('database error');
+        }
+
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !hiddenRanges.some((range) => event.ts >= range.start_ts && event.ts <= range.stop_ts));
         }
 
         if (results.length > 0) {

@@ -697,6 +697,114 @@
 							}
 						}
 					]
+				},
+				{
+					"name": "Create Hidden Lowering in Example Cruise",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"lowering_id\": \"hidden-in-example\", \"start_ts\": \"2023-05-07T00:00:00.000Z\", \"stop_ts\": \"2023-05-08T00:00:00.000Z\", \"lowering_location\": \"Hidden Test Location\", \"lowering_hidden\": true, \"lowering_additional_meta\": {}, \"lowering_tags\": [\"hidden-tag\"]}"
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains lowering ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"insertedId\");",
+									"    pm.environment.set(\"hiddenInExampleLoweringId\", jsonData.insertedId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Event in Hidden Lowering of Example Cruise",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"event_author\": \"Admin\", \"ts\": \"2023-05-07T12:00:00.000Z\", \"event_value\": \"Hidden Lowering Event\", \"event_options\": [{\"event_option_name\": \"Test\", \"event_option_value\": \"Value\"}], \"event_free_text\": \"Event inside a hidden lowering within a non-hidden cruise\"}"
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains event ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"insertedId\");",
+									"    pm.environment.set(\"hiddenLoweringEventId\", jsonData.insertedId);",
+									"});"
+								]
+							}
+						}
+					]
 				}
 			]
 		},
@@ -3795,6 +3903,150 @@
 					]
 				},
 				{
+					"name": "Guest Events bycruise Excludes Hidden Lowering Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{cruiseId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bycruise",
+								"{{cruiseId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"No events from hidden lowering in results\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var hiddenLoweringEvents = jsonData.filter(function(e) {",
+									"        return e.event_value === \"Hidden Lowering Event\";",
+									"    });",
+									"    pm.expect(hiddenLoweringEvents.length).to.eql(0);",
+									"});",
+									"",
+									"pm.test(\"Normal events still present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var normalEvents = jsonData.filter(function(e) {",
+									"        return e.event_value === \"Example Event\";",
+									"    });",
+									"    pm.expect(normalEvents.length).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Guest Events bycruise Count Excludes Hidden Lowering Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bycruise/{{cruiseId}}/count",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bycruise",
+								"{{cruiseId}}",
+								"count"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Count does not include hidden lowering events\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    // Only the single Example Event (ts within the non-hidden lowering) should be counted",
+									"    pm.expect(jsonData.events).to.eql(1);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Guest Event Exports bycruise Excludes Hidden Lowering Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/event_exports/bycruise/{{cruiseId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"event_exports",
+								"bycruise",
+								"{{cruiseId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"No exports from hidden lowering in results\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var hiddenEvents = jsonData.filter(function(e) {",
+									"        return e.event_value === \"Hidden Lowering Event\";",
+									"    });",
+									"    pm.expect(hiddenEvents.length).to.eql(0);",
+									"});",
+									"",
+									"pm.test(\"Normal event exports still present\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var normalEvents = jsonData.filter(function(e) {",
+									"        return e.event_value === \"Example Event\";",
+									"    });",
+									"    pm.expect(normalEvents.length).to.be.above(0);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
 					"name": "Admin Automatically Sees Hidden Cruises",
 					"event": [
 						{
@@ -4482,6 +4734,86 @@
 		{
 			"name": "Teardown",
 			"item": [
+				{
+					"name": "Delete Hidden Lowering Event in Example Cruise",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/{{hiddenLoweringEventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"{{hiddenLoweringEventId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Hidden Lowering in Example Cruise",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings/{{hiddenInExampleLoweringId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings",
+								"{{hiddenInExampleLoweringId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
 				{
 					"name": "Delete Cruise-Hidden Lowering",
 					"request": {

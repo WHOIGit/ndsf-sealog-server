@@ -5,7 +5,8 @@ const THRESHOLD = 120; //seconds
 
 const {
   checkEntityAccess,
-  findParentCruise
+  findParentCruise,
+  getHiddenLoweringRanges
 } = require('../../../lib/access_control');
 
 const {
@@ -223,7 +224,13 @@ exports.plugin = {
         const eventQuery = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
 
         try {
-          const results = await db.collection(eventsTable).find(eventQuery, { _id: 1 }).sort( { ts: 1 } ).toArray();
+          let results = await db.collection(eventsTable).find(eventQuery, { _id: 1, ts: 1 }).sort( { ts: 1 } ).toArray();
+
+          // Filter out events that fall within hidden lowerings
+          const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+          if (hiddenRanges.length > 0) {
+            results = results.filter((event) => !hiddenRanges.some((range) => event.ts >= range.start_ts && event.ts <= range.stop_ts));
+          }
 
           // EventID Filtering
           if (results.length > 0) {

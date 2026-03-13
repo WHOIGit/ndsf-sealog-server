@@ -8,7 +8,8 @@ const THRESHOLD = 120; //seconds
 
 const {
   checkEntityAccess,
-  findParentCruise
+  findParentCruise,
+  getHiddenLoweringRanges
 } = require('../../../lib/access_control');
 
 const {
@@ -331,9 +332,15 @@ exports.plugin = {
           return Boom.serverUnavailable('database error');
         }
 
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !hiddenRanges.some((range) => event.ts >= range.start_ts && event.ts <= range.stop_ts));
+        }
+
         if (results.length === 0) {
           return Boom.notFound('No records found' );
-        }      
+        }
 
         // --------- Data source filtering
         if (request.query.datasource) {
@@ -456,8 +463,14 @@ exports.plugin = {
           return Boom.serverUnavailable('database error');
         }
 
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !hiddenRanges.some((range) => event.ts >= range.start_ts && event.ts <= range.stop_ts));
+        }
+
         if (results.length > 0) {
-        
+
           // --------- Data source filtering
           if (request.query.datasource) {
 
