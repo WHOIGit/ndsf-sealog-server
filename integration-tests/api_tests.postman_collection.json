@@ -589,6 +589,114 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Create Lowering in Hidden Cruise",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"lowering_id\": \"cruise-hidden-lowering\", \"start_ts\": \"2023-06-03T00:00:00.000Z\", \"stop_ts\": \"2023-06-04T00:00:00.000Z\", \"lowering_location\": \"Test Location\", \"lowering_additional_meta\": {}, \"lowering_tags\": [\"test-tag\"]}"
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains lowering ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"insertedId\");",
+									"    pm.environment.set(\"cruiseHiddenLoweringId\", jsonData.insertedId);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Event in Cruise-Hidden Lowering",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\"event_author\": \"Admin\", \"ts\": \"2023-06-03T12:00:00.000Z\", \"event_value\": \"Cruise Hidden Test Event\", \"event_options\": [{\"event_option_name\": \"Test Option\", \"event_option_value\": \"Test Value\"}], \"event_free_text\": \"Event in a lowering whose parent cruise is hidden\"}"
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response contains event ID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"insertedId\");",
+									"    pm.environment.set(\"cruiseHiddenEventId\", jsonData.insertedId);",
+									"});"
+								]
+							}
+						}
+					]
 				}
 			]
 		},
@@ -3062,7 +3170,7 @@
 					},
 					"response": []
 				},
-								{
+				{
 					"name": "Anonymous Get Events",
 					"event": [
 						{
@@ -3343,7 +3451,7 @@
 			"name": "Access Control - Hidden Field Tests",
 			"item": [
 				{
-					"name": "Guest Cannot See Hidden Cruises in List",
+					"name": "Guest Sees Hidden Cruises in List with access_denied",
 					"event": [
 						{
 							"listen": "test",
@@ -3353,12 +3461,21 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test(\"Hidden cruise not in response\", function () {",
+									"pm.test(\"Hidden cruise in response with access_denied flag\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"    var hiddenCruiseId = pm.environment.get('hiddenCruiseId');",
+									"    pm.expect(jsonData).to.be.an(\"array\");",
+									"    var hiddenCruiseId = pm.environment.get(\"hiddenCruiseId\");",
 									"    var found = jsonData.find(c => c.id === hiddenCruiseId);",
-									"    pm.expect(found).to.be.undefined;",
+									"    pm.expect(found).to.not.be.undefined;",
+									"    pm.expect(found.access_denied).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Access-denied cruise has only id, cruise_id, and access_denied\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var hiddenCruiseId = pm.environment.get(\"hiddenCruiseId\");",
+									"    var found = jsonData.find(c => c.id === hiddenCruiseId);",
+									"    var keys = Object.keys(found).sort();",
+									"    pm.expect(keys).to.eql([\"access_denied\", \"cruise_id\", \"id\", \"start_ts\", \"stop_ts\"]);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -3389,7 +3506,7 @@
 					"response": []
 				},
 				{
-					"name": "Guest Cannot See Hidden Lowerings in List",
+					"name": "Guest Sees Hidden Lowerings in List with access_denied",
 					"event": [
 						{
 							"listen": "test",
@@ -3399,12 +3516,21 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test(\"Hidden lowering not in response\", function () {",
+									"pm.test(\"Hidden lowering in response with access_denied flag\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.be.an('array');",
-									"    var hiddenLoweringId = pm.environment.get('hiddenLoweringId');",
+									"    pm.expect(jsonData).to.be.an(\"array\");",
+									"    var hiddenLoweringId = pm.environment.get(\"hiddenLoweringId\");",
 									"    var found = jsonData.find(l => l.id === hiddenLoweringId);",
-									"    pm.expect(found).to.be.undefined;",
+									"    pm.expect(found).to.not.be.undefined;",
+									"    pm.expect(found.access_denied).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Access-denied lowering has only id, lowering_id, and access_denied\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var hiddenLoweringId = pm.environment.get(\"hiddenLoweringId\");",
+									"    var found = jsonData.find(l => l.id === hiddenLoweringId);",
+									"    var keys = Object.keys(found).sort();",
+									"    pm.expect(keys).to.eql([\"access_denied\", \"id\", \"lowering_id\", \"start_ts\"]);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -3511,6 +3637,162 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Guest Sees Lowering of Hidden Cruise with access_denied",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{guest_jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Lowering of hidden cruise has access_denied flag\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an(\"array\");",
+									"    var targetId = pm.environment.get(\"cruiseHiddenLoweringId\");",
+									"    var found = jsonData.find(l => l.id === targetId);",
+									"    pm.expect(found).to.not.be.undefined;",
+									"    pm.expect(found.access_denied).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Cruise-denied lowering has only id, lowering_id, and access_denied\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var targetId = pm.environment.get(\"cruiseHiddenLoweringId\");",
+									"    var found = jsonData.find(l => l.id === targetId);",
+									"    var keys = Object.keys(found).sort();",
+									"    pm.expect(keys).to.eql([\"access_denied\", \"id\", \"lowering_id\", \"start_ts\"]);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Guest Cannot Access Events for Lowering in Hidden Cruise",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{guest_jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/bylowering/{{cruiseHiddenLoweringId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"bylowering",
+								"{{cruiseHiddenLoweringId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401]);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Guest Sees Lowerings via bycruise for Hidden Cruise with access_denied",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{guest_jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings/bycruise/{{hiddenCruiseId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings",
+								"bycruise",
+								"{{hiddenCruiseId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Lowerings have access_denied flag\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an(\"array\");",
+									"    pm.expect(jsonData.length).to.be.above(0);",
+									"    var targetId = pm.environment.get(\"cruiseHiddenLoweringId\");",
+									"    var found = jsonData.find(l => l.id === targetId);",
+									"    pm.expect(found).to.not.be.undefined;",
+									"    pm.expect(found.access_denied).to.eql(true);",
+									"});",
+									"",
+									"pm.test(\"Bycruise denied lowering has only id, lowering_id, and access_denied\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var targetId = pm.environment.get(\"cruiseHiddenLoweringId\");",
+									"    var found = jsonData.find(l => l.id === targetId);",
+									"    var keys = Object.keys(found).sort();",
+									"    pm.expect(keys).to.eql([\"access_denied\", \"id\", \"lowering_id\", \"start_ts\"]);",
+									"});"
+								]
+							}
+						}
+					]
 				},
 				{
 					"name": "Admin Automatically Sees Hidden Cruises",
@@ -4200,6 +4482,86 @@
 		{
 			"name": "Teardown",
 			"item": [
+				{
+					"name": "Delete Cruise-Hidden Lowering",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/lowerings/{{cruiseHiddenLoweringId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"lowerings",
+								"{{cruiseHiddenLoweringId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete Cruise-Hidden Event",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/events/{{cruiseHiddenEventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"events",
+								"{{cruiseHiddenEventId}}"
+							]
+						}
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								]
+							}
+						}
+					]
+				},
 				{
 					"name": "Delete Event Auxiliary Data",
 					"event": [

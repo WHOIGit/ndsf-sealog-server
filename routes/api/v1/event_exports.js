@@ -3,7 +3,8 @@ const Joi = require('joi');
 const { flattenEventJSON, convertToCSV } = require('./json_util');
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise
 } = require('../../../lib/access_control');
 
 const {
@@ -318,6 +319,12 @@ exports.plugin = {
 
         // Check if user can access this lowering
         if (!checkEntityAccess(lowering, 'lowering', request)) {
+          return Boom.unauthorized('Not authorized to access this lowering');
+        }
+
+        // Check if the parent cruise is hidden
+        const parentCruise = await findParentCruise(db, cruisesTable, lowering);
+        if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
           return Boom.unauthorized('Not authorized to access this lowering');
         }
 

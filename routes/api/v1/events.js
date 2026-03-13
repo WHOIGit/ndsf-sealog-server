@@ -7,7 +7,8 @@ const escape = require('lodash.escape');
 const THRESHOLD = 120; //seconds
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise
 } = require('../../../lib/access_control');
 
 const {
@@ -546,6 +547,12 @@ exports.plugin = {
             return Boom.unauthorized('Not authorized to access this lowering');
           }
 
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
+          }
+
           lowering = loweringResult;
         }
         catch (err) {
@@ -669,6 +676,12 @@ exports.plugin = {
 
           // Check if user can access this lowering
           if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
+          }
+
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
             return Boom.unauthorized('Not authorized to access this lowering');
           }
 

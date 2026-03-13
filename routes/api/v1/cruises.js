@@ -16,7 +16,9 @@ const {
 
 const {
   initializeQuery,
-  checkEntityAccess
+  checkEntityAccess,
+  annotateAccessDenied,
+  stripAccessDeniedFields
 } = require('../../../lib/access_control');
 
 const {
@@ -161,10 +163,19 @@ const cruiseSuccessResponse = Joi.object({
   cruise_additional_meta: cruiseAdditionalMetaCreate,
   cruise_tags: Joi.array().items(cruiseTag),
   cruise_access_list: Joi.array().items(userID),
-  cruise_hidden: Joi.boolean()
+  cruise_hidden: Joi.boolean(),
+  access_denied: Joi.boolean().optional()
 }).label('cruiseSuccessResponse');
 
 const cruiseSuccessResponseNoAccessControl = cruiseSuccessResponse.keys({ cruise_access_list: Joi.forbidden() }).label('cruiseSuccessResponse');
+
+const cruiseAccessDeniedResponse = Joi.object({
+  id: Joi.object(),
+  cruise_id: Joi.string(),
+  start_ts: Joi.date().iso(),
+  stop_ts: Joi.date().iso(),
+  access_denied: Joi.boolean().valid(true).required()
+}).label('cruiseAccessDeniedResponse');
 
 const cruiseCreatePayload = Joi.object({
   id: Joi.string().length(24).optional(),
@@ -214,7 +225,7 @@ exports.plugin = {
         const db = request.mongo.db;
         // const ObjectID = request.mongo.ObjectID;
 
-        const query = initializeQuery(request, 'cruise');
+        const query = {};
 
         // Cruise ID filtering... if using this then there's no reason to use other filters
         if (request.query.cruise_id) {
@@ -286,6 +297,9 @@ exports.plugin = {
               return _renameAndClearFields(cruise);
             });
 
+            annotateAccessDenied(mod_cruises, 'cruise', request);
+            stripAccessDeniedFields(mod_cruises, 'cruise');
+
             if (request.query.format && request.query.format === "csv") {
 
               const flattenJSON = _flattenJSON(mod_cruises);
@@ -296,7 +310,7 @@ exports.plugin = {
 
               return h.response(csv_results).code(200);
             }
-            
+
             return h.response(mod_cruises).code(200);
           }
  
@@ -321,7 +335,10 @@ exports.plugin = {
           status: {
             200: Joi.alternatives().try(
               Joi.string(),
-              Joi.array().items((useAccessControl) ? cruiseSuccessResponse : cruiseSuccessResponseNoAccessControl)
+              Joi.array().items(Joi.alternatives().try(
+                (useAccessControl) ? cruiseSuccessResponse : cruiseSuccessResponseNoAccessControl,
+                cruiseAccessDeniedResponse
+              ))
             )
           }
         },

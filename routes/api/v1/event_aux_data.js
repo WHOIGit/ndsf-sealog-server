@@ -4,7 +4,8 @@ const Joi = require('joi');
 const THRESHOLD = 120; //seconds
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise
 } = require('../../../lib/access_control');
 
 const {
@@ -311,6 +312,12 @@ exports.plugin = {
           }
 
           if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          }
+
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 
