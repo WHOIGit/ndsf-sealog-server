@@ -729,61 +729,47 @@ exports.plugin = {
           return Boom.badRequest('id must be a single String of 12 bytes or a string of 24 hex characters');
         }
 
-        let event_aux_data = null;
-        let result = null;
-
         try {
-          result = await db.collection(eventAuxDataTable).findOne(query);
+          const result = await db.collection(eventAuxDataTable).findOne(query);
 
           if (!result) {
             return Boom.notFound('No record found for id: ' + request.params.id);
           }
-
-          event_aux_data = request.payload;
-
         }
         catch (err) {
           return Boom.serverUnavailable('database error', err);
         }
 
+        let event_id;
         try {
-          event_aux_data.event_id = new ObjectID(request.payload.event_id);
+          event_id = new ObjectID(request.payload.event_id);
         }
         catch (err) {
           return Boom.badRequest('id must be a single String of 12 bytes or a string of 24 hex characters');
         }
 
-        if (event_aux_data.data_array) {
-          result.data_array.forEach((resultOption) => {
-
-            let foundit = false;
-            
-            event_aux_data.data_array.forEach((requestOption) => {
-
-              if (requestOption.data_name === resultOption.data_name) {
-                requestOption.data_value = resultOption.data_value;
-                
-                if (resultOption.data_uom) {
-                  requestOption.data_uom = resultOption.data_uom;
-                }
-
-                foundit = true;
-              }
-            });
-
-            if (!foundit) {
-              event_aux_data.data_array.push(resultOption);
-            }
-          });
-        }
-
         try {
-          await db.collection(eventAuxDataTable).updateOne( query, { $set: event_aux_data } );
-          return h.response().code(204);
+          const event = await db.collection(eventsTable).findOne({ _id: event_id });
+          if (!event) {
+            return Boom.badRequest('event not found for event_id: ' + request.payload.event_id);
+          }
         }
         catch (err) {
           return Boom.serverUnavailable('database error', err);
         }
+
+        const filter = { event_id, data_source: request.payload.data_source };
+
+        const update = {
+          $push: { data_array: { $each: request.payload.data_array } },
+          $setOnInsert: { event_id, data_source: request.payload.data_source },
+        };
+
+        const result = await db.collection(eventAuxDataTable).updateOne(
+          filter, update, { upsert: true }
+        );
+
+        return h.response().code(result.upsertedId ? 201 : 204);
       },
       config: {
         auth: {
@@ -793,7 +779,7 @@ exports.plugin = {
         validate: {
           headers: authorizationHeader,
           params: auxDataParam,
-          payload: auxDataUpdatePayload
+          payload: auxDataCreatePayload,
         },
         response: {
           status: {}
