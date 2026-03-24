@@ -96,6 +96,11 @@ jobs:
       - name: Run test suite
         run: docker compose run sealog-server npm run start-test
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Run server and Postman tests
         run: |
           docker compose up -d
