@@ -2650,14 +2650,14 @@
 					"response": []
 				},
 				{
-					"name": "Update Event Auxiliary Data",
+					"name": "Patch Event Aux Data - nonexistent event_id returns 400",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 204\", function () {",
-									"    pm.response.to.have.status(204);",
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2674,7 +2674,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"data_source\": \"Updated Data Source\"\n}",
+							"raw": "{\n  \"event_id\": \"aaaaaaaaaaaaaaaaaaaaaaaa\",\n  \"data_source\": \"testSource\",\n  \"data_array\": [\n    {\n      \"data_name\": \"test\",\n      \"data_value\": \"123\"\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2698,19 +2698,14 @@
 					"response": []
 				},
 				{
-					"name": "Get Updated Event Auxiliary Data",
+					"name": "Patch Event Aux Data - new data_source creates record (201)",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Event auxiliary data is updated\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.data_source).to.eql(\"Updated Data Source\");",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2718,13 +2713,70 @@
 						}
 					],
 					"request": {
-						"method": "GET",
+						"method": "PATCH",
 						"header": [
 							{
 								"key": "authorization",
 								"value": "{{jwt}}"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"data_source\": \"patchTestSource\",\n  \"data_array\": [\n    {\n      \"data_name\": \"temperature\",\n      \"data_value\": \"22.5\",\n      \"data_uom\": \"celsius\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseURL}}/sealog-server/api/v1/event_aux_data/{{eventAuxDataId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"sealog-server",
+								"api",
+								"v1",
+								"event_aux_data",
+								"{{eventAuxDataId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patch Event Aux Data - existing data_source appends (204)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "authorization",
+								"value": "{{jwt}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"data_source\": \"patchTestSource\",\n  \"data_array\": [\n    {\n      \"data_name\": \"pressure\",\n      \"data_value\": \"1013.25\",\n      \"data_uom\": \"hPa\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
 							"raw": "{{baseURL}}/sealog-server/api/v1/event_aux_data/{{eventAuxDataId}}",
 							"host": [
