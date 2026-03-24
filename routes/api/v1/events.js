@@ -7,7 +7,10 @@ const escape = require('lodash.escape');
 const THRESHOLD = 120; //seconds
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise,
+  getHiddenLoweringRanges,
+  isEventInHiddenRange
 } = require('../../../lib/access_control');
 
 const {
@@ -330,9 +333,15 @@ exports.plugin = {
           return Boom.serverUnavailable('database error');
         }
 
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !isEventInHiddenRange(event, hiddenRanges));
+        }
+
         if (results.length === 0) {
           return Boom.notFound('No records found' );
-        }      
+        }
 
         // --------- Data source filtering
         if (request.query.datasource) {
@@ -455,8 +464,14 @@ exports.plugin = {
           return Boom.serverUnavailable('database error');
         }
 
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !isEventInHiddenRange(event, hiddenRanges));
+        }
+
         if (results.length > 0) {
-        
+
           // --------- Data source filtering
           if (request.query.datasource) {
 
@@ -543,6 +558,12 @@ exports.plugin = {
 
           // Check if user can access this lowering
           if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
+          }
+
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
             return Boom.unauthorized('Not authorized to access this lowering');
           }
 
@@ -669,6 +690,12 @@ exports.plugin = {
 
           // Check if user can access this lowering
           if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('Not authorized to access this lowering');
+          }
+
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
             return Boom.unauthorized('Not authorized to access this lowering');
           }
 
