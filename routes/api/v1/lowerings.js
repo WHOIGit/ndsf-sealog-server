@@ -20,7 +20,7 @@ const {
   annotateAccessDenied,
   annotateCruiseAccessDenied,
   findParentCruise,
-  stripAccessDeniedFields
+  sanitizeUnauthorizedFields
 } = require('../../../lib/access_control');
 
 const {
@@ -258,7 +258,7 @@ exports.plugin = {
 
           if (lowerings.length > 0) {
 
-            const mod_lowerings = lowerings.map((lowering) => {
+            let mod_lowerings = lowerings.map((lowering) => {
 
               try {
                 lowering.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + lowering._id);
@@ -272,7 +272,7 @@ exports.plugin = {
 
             annotateAccessDenied(mod_lowerings, 'lowering', request);
             await annotateCruiseAccessDenied(mod_lowerings, db, cruisesTable, request);
-            stripAccessDeniedFields(mod_lowerings, 'lowering');
+            mod_lowerings = sanitizeUnauthorizedFields(mod_lowerings, 'lowering');
 
             if (request.query.format && request.query.format === "csv") {
 
@@ -396,7 +396,7 @@ exports.plugin = {
 
           if (lowerings.length > 0) {
 
-            const mod_lowerings = lowerings.map((result) => {
+            let mod_lowerings = lowerings.map((result) => {
 
               try {
                 result.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + result._id);
@@ -416,7 +416,7 @@ exports.plugin = {
               mod_lowerings.forEach((l) => { l.access_denied = true; });
             }
 
-            stripAccessDeniedFields(mod_lowerings, 'lowering');
+            mod_lowerings = sanitizeUnauthorizedFields(mod_lowerings, 'lowering');
 
             if (request.query.format && request.query.format === "csv") {
 

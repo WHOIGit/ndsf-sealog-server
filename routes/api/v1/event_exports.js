@@ -5,7 +5,8 @@ const { flattenEventJSON, convertToCSV } = require('./json_util');
 const {
   checkEntityAccess,
   findParentCruise,
-  getHiddenLoweringRanges
+  getHiddenLoweringRanges,
+  isEventInHiddenRange
 } = require('../../../lib/access_control');
 
 const {
@@ -230,7 +231,7 @@ exports.plugin = {
         // Filter out events that fall within hidden lowerings
         const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
         if (hiddenRanges.length > 0) {
-          results = results.filter((event) => !hiddenRanges.some((range) => event.ts >= range.start_ts && event.ts <= range.stop_ts));
+          results = results.filter((event) => !isEventInHiddenRange(event, hiddenRanges));
         }
 
         if (results.length > 0) {

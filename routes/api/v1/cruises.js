@@ -18,7 +18,7 @@ const {
   initializeQuery,
   checkEntityAccess,
   annotateAccessDenied,
-  stripAccessDeniedFields
+  sanitizeUnauthorizedFields
 } = require('../../../lib/access_control');
 
 const {
@@ -285,7 +285,7 @@ exports.plugin = {
           // console.log("cruises:", cruises);
           if (cruises.length > 0) {
 
-            const mod_cruises = cruises.map((cruise) => {
+            let mod_cruises = cruises.map((cruise) => {
 
               try {
                 cruise.cruise_additional_meta.cruise_files = Fs.readdirSync(CRUISE_PATH + '/' + cruise._id);
@@ -298,7 +298,7 @@ exports.plugin = {
             });
 
             annotateAccessDenied(mod_cruises, 'cruise', request);
-            stripAccessDeniedFields(mod_cruises, 'cruise');
+            mod_cruises = sanitizeUnauthorizedFields(mod_cruises, 'cruise');
 
             if (request.query.format && request.query.format === "csv") {
 
