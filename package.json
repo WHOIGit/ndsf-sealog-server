@@ -7,7 +7,7 @@
     "url": "https://github.com/oceandatatools/sealog-server/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "main": "server.js",
   "scripts": {
