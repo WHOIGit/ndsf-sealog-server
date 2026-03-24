@@ -136,7 +136,8 @@ const eventExportSuccessResponse = Joi.object({
         Joi.string(),
         Joi.number()
       ),
-      data_uom: Joi.string()
+      data_uom: Joi.string(),
+      data_age: Joi.number().optional()
     }))
   }))
 }).label('eventExportSuccessResponse');
