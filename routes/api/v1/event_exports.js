@@ -3,7 +3,10 @@ const Joi = require('joi');
 const { flattenEventJSON, convertToCSV } = require('./json_util');
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise,
+  getHiddenLoweringRanges,
+  isEventInHiddenRange
 } = require('../../../lib/access_control');
 
 const {
@@ -225,6 +228,12 @@ exports.plugin = {
           return Boom.serverUnavailable('database error');
         }
 
+        // Filter out events that fall within hidden lowerings
+        const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+        if (hiddenRanges.length > 0) {
+          results = results.filter((event) => !isEventInHiddenRange(event, hiddenRanges));
+        }
+
         if (results.length > 0) {
 
           // datasource filtering
@@ -318,6 +327,12 @@ exports.plugin = {
 
         // Check if user can access this lowering
         if (!checkEntityAccess(lowering, 'lowering', request)) {
+          return Boom.unauthorized('Not authorized to access this lowering');
+        }
+
+        // Check if the parent cruise is hidden
+        const parentCruise = await findParentCruise(db, cruisesTable, lowering);
+        if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
           return Boom.unauthorized('Not authorized to access this lowering');
         }
 

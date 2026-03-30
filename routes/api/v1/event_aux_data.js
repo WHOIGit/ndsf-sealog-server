@@ -4,7 +4,10 @@ const Joi = require('joi');
 const THRESHOLD = 120; //seconds
 
 const {
-  checkEntityAccess
+  checkEntityAccess,
+  findParentCruise,
+  getHiddenLoweringRanges,
+  isEventInHiddenRange
 } = require('../../../lib/access_control');
 
 const {
@@ -222,7 +225,13 @@ exports.plugin = {
         const eventQuery = _buildEventsQuery(request, cruise.start_ts, cruise.stop_ts);
 
         try {
-          const results = await db.collection(eventsTable).find(eventQuery, { _id: 1 }).sort( { ts: 1 } ).toArray();
+          let results = await db.collection(eventsTable).find(eventQuery, { _id: 1, ts: 1 }).sort( { ts: 1 } ).toArray();
+
+          // Filter out events that fall within hidden lowerings
+          const hiddenRanges = await getHiddenLoweringRanges(db, loweringsTable, cruise, request);
+          if (hiddenRanges.length > 0) {
+            results = results.filter((event) => !isEventInHiddenRange(event, hiddenRanges));
+          }
 
           // EventID Filtering
           if (results.length > 0) {
@@ -311,6 +320,12 @@ exports.plugin = {
           }
 
           if (!checkEntityAccess(loweringResult, 'lowering', request)) {
+            return Boom.unauthorized('User not authorized to retrieve this lowering');
+          }
+
+          // Check if the parent cruise is hidden
+          const parentCruise = await findParentCruise(db, cruisesTable, loweringResult);
+          if (parentCruise && !checkEntityAccess(parentCruise, 'cruise', request)) {
             return Boom.unauthorized('User not authorized to retrieve this lowering');
           }
 

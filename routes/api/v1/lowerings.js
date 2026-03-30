@@ -16,7 +16,11 @@ const {
 
 const {
   initializeQuery,
-  checkEntityAccess
+  checkEntityAccess,
+  annotateAccessDenied,
+  annotateCruiseAccessDenied,
+  findParentCruise,
+  sanitizeUnauthorizedFields
 } = require('../../../lib/access_control');
 
 const {
@@ -171,10 +175,18 @@ const loweringSuccessResponse = Joi.object({
   lowering_tags: Joi.array().items(loweringTag),
   lowering_location: Joi.string().allow(''),
   lowering_access_list: Joi.array().items(userID),
-  lowering_hidden: Joi.boolean()
+  lowering_hidden: Joi.boolean(),
+  access_denied: Joi.boolean().optional()
 }).label('loweringSuccessResponse');
 
 const loweringSuccessResponseNoAccessControl = loweringSuccessResponse.keys({ lowering_access_list: Joi.forbidden() }).label('loweringSuccessResponse');
+
+const loweringAccessDeniedResponse = Joi.object({
+  id: Joi.object(),
+  lowering_id: Joi.string(),
+  start_ts: Joi.date().iso(),
+  access_denied: Joi.boolean().valid(true).required()
+}).label('loweringAccessDeniedResponse');
 
 const loweringUpdatePermissionsPayload = Joi.object({
   add: Joi.array().items(userID).optional(),
@@ -196,7 +208,7 @@ exports.plugin = {
 
         const db = request.mongo.db;
 
-        const query = initializeQuery(request, 'lowering');
+        const query = {};
 
         // Lowering ID filtering... if using this then there's no reason to use other filters
         if (request.query.lowering_id) {
@@ -246,7 +258,7 @@ exports.plugin = {
 
           if (lowerings.length > 0) {
 
-            const mod_lowerings = lowerings.map((lowering) => {
+            let mod_lowerings = lowerings.map((lowering) => {
 
               try {
                 lowering.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + lowering._id);
@@ -257,6 +269,10 @@ exports.plugin = {
 
               return _renameAndClearFields(lowering);
             });
+
+            annotateAccessDenied(mod_lowerings, 'lowering', request);
+            await annotateCruiseAccessDenied(mod_lowerings, db, cruisesTable, request);
+            mod_lowerings = sanitizeUnauthorizedFields(mod_lowerings, 'lowering');
 
             if (request.query.format && request.query.format === "csv") {
 
@@ -294,7 +310,10 @@ exports.plugin = {
           status: {
             200: Joi.alternatives().try(
               Joi.string(),
-              Joi.array().items((useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl)
+              Joi.array().items(Joi.alternatives().try(
+                (useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl,
+                loweringAccessDeniedResponse
+              ))
             )
           }
         },
@@ -328,7 +347,7 @@ exports.plugin = {
           return Boom.serverUnavailable('unknown error');
         }
 
-        const query = initializeQuery(request, 'lowering');
+        const query = {};
 
         // Lowering_id filtering
         if (request.query.lowering_id) {
@@ -377,7 +396,7 @@ exports.plugin = {
 
           if (lowerings.length > 0) {
 
-            const mod_lowerings = lowerings.map((result) => {
+            let mod_lowerings = lowerings.map((result) => {
 
               try {
                 result.lowering_additional_meta.lowering_files = Fs.readdirSync(LOWERING_PATH + '/' + result._id);
@@ -388,6 +407,16 @@ exports.plugin = {
 
               return _renameAndClearFields(result);
             });
+
+            annotateAccessDenied(mod_lowerings, 'lowering', request);
+
+            // If the parent cruise is hidden and user can't access it,
+            // mark all its lowerings as access_denied
+            if (!checkEntityAccess(cruise, 'cruise', request)) {
+              mod_lowerings.forEach((l) => { l.access_denied = true; });
+            }
+
+            mod_lowerings = sanitizeUnauthorizedFields(mod_lowerings, 'lowering');
 
             if (request.query.format && request.query.format === "csv") {
 
@@ -424,7 +453,10 @@ exports.plugin = {
           status: {
             200: Joi.alternatives().try(
               Joi.string(),
-              Joi.array().items((useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl)
+              Joi.array().items(Joi.alternatives().try(
+                (useAccessControl) ? loweringSuccessResponse : loweringSuccessResponseNoAccessControl,
+                loweringAccessDeniedResponse
+              ))
             )
           }
         },
