@@ -8,7 +8,8 @@ services:
     image: whoi/ndsf-sealog-server
     restart: unless-stopped
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
     environment:
       # Change this value to something random
@@ -31,6 +32,12 @@ services:
   mongo:
     image: mongo:4
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
     volumes:
       - database:/data/db
 
