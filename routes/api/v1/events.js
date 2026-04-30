@@ -590,7 +590,7 @@ exports.plugin = {
         }
 
         if (results.length === 0) {
-          return Boom.notFound('No records found' );
+          return h.response(results).code(200);
         }
       
         // --------- Data source filtering
