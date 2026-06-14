@@ -129,7 +129,8 @@ const auxData_data_item = Joi.object({
     Joi.string(),
     Joi.number()
   ).required(),
-  data_uom: Joi.string().optional()
+  data_uom: Joi.string().optional(),
+  data_age: Joi.number().optional()
 }).label('auxDataDataItem');
 
 const auxDataQuery = Joi.object({
