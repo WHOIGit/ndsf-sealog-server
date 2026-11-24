@@ -21,8 +21,6 @@ const {
 //
 // (Lowerings already have stable links: the client opens
 // /lowering_gallery/{lowering_id} by name.)
-//
-// See docs/stable-links.md.
 
 const FRAMEGRAB_DATA_SOURCE = 'vehicleRealtimeFramegrabberData';
 
