@@ -41,6 +41,10 @@ const swagger_options = {
       description: 'the events api'
     },
     {
+      name: 'links',
+      description: 'stable links to framegrabs'
+    },
+    {
       name: 'lowerings',
       description: 'the lowerings api'
     },
@@ -136,6 +140,11 @@ const manifest = {
         }
       },
       { plugin: './routes/default', options: {},
+        routes: {
+          prefix: envKey('prefix')
+        }
+      },
+      { plugin: './routes/links', options: {},
         routes: {
           prefix: envKey('prefix')
         }
