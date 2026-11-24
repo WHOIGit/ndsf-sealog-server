@@ -27,19 +27,52 @@ const FRAMEGRAB_DATA_SOURCE = 'vehicleRealtimeFramegrabberData';
 const DEFAULT_TOLERANCE_SECONDS = 30;
 const MAX_TOLERANCE_SECONDS = 600;
 
-// Accepts 20250210_183242, 20250210_183242956 or any ISO 8601 date-time.
+// Build a UTC date from its fields, refusing ones that don't exist
+// (February 30th, hour 24) rather than letting them roll over.
+const utcDate = (year, month, day, hour, minute, second, millis) => {
+
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millis));
+
+  if (isNaN(date) ||
+    date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour || date.getUTCMinutes() !== minute || date.getUTCSeconds() !== second) {
+    return null;
+  }
+
+  return date;
+};
+
+// Accepts 20250210_183242, 20250210_183242956 or an ISO 8601 date-time.
+// Times are UTC unless the ISO form gives an offset.
 const parseTimestamp = (value) => {
 
   const compact = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(\d{3})?$/.exec(value);
   if (compact) {
-    const [, year, month, day, hour, minute, second, millis] = compact;
-    const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}.${millis || '000'}Z`);
-    return isNaN(date) ? null : date;
+    const [year, month, day, hour, minute, second] = compact.slice(1, 7).map(Number);
+    return utcDate(year, month, day, hour, minute, second, Number(compact[7] || 0));
   }
 
-  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    const date = new Date(value);
-    return isNaN(date) ? null : date;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3})\d*)?)?(Z|[+-]\d{2}:?\d{2})?$/i.exec(value);
+  if (iso) {
+    const [year, month, day, hour, minute] = iso.slice(1, 6).map(Number);
+    const second = Number(iso[6] || 0);
+    const millis = Number((iso[7] || '0').padEnd(3, '0'));
+    const date = utcDate(year, month, day, hour, minute, second, millis);
+    if (!date) {
+      return null;
+    }
+
+    const offset = /^([+-])(\d{2}):?(\d{2})$/.exec(iso[8] || '');
+    if (offset) {
+      const offsetMinutes = Number(offset[2]) * 60 + Number(offset[3]);
+      if (Number(offset[2]) > 23 || Number(offset[3]) > 59) {
+        return null;
+      }
+
+      return new Date(date.getTime() - (offset[1] === '-' ? -1 : 1) * offsetMinutes * 60000);
+    }
+
+    return date;
   }
 
   return null;
@@ -97,10 +130,24 @@ const framegrabsFromAuxData = (auxData) => {
 
 // Build a URL path for an image under /files/images, relative to the route
 // that was requested, so the redirect works behind any reverse-proxy prefix.
-const imagePath = (filename, depth) => {
+const encodeFilename = (filename) => filename.split('/').filter(Boolean).map(encodeURIComponent).join('/');
 
-  const encoded = filename.split('/').filter(Boolean).map(encodeURIComponent).join('/');
-  return '../'.repeat(depth) + 'files/images/' + encoded;
+const imagePath = (filename, depth) => '../'.repeat(depth) + 'files/images/' + encodeFilename(filename);
+
+// Nearest first; ties go to the earlier event, then the lower _id, so the
+// same link always resolves to the same frame.
+const byNearness = (target) => (a, b) => {
+
+  return (Math.abs(a.ts - target) - Math.abs(b.ts - target)) ||
+    (a.ts - b.ts) ||
+    a._id.toString().localeCompare(b._id.toString());
+};
+
+// The framegrab directory, e.g. "port_brow_4k.framegrab01".
+const imageDirectory = (filename) => {
+
+  const parts = filename.split('/').filter(Boolean);
+  return parts.length >= 2 ? parts[parts.length - 2] : filename;
 };
 
 const findAccessibleLowering = async (request) => {
@@ -125,7 +172,15 @@ const findAccessibleLowering = async (request) => {
   }
 
   if (lowering.stop_ts) {
-    const cruise = await findParentCruise(db, cruisesTable, lowering);
+    let cruise;
+    try {
+      cruise = await findParentCruise(db, cruisesTable, lowering);
+    }
+    catch (err) {
+      console.log('ERROR:', err);
+      throw Boom.serverUnavailable('database error');
+    }
+
     if (cruise && !checkEntityAccess(cruise, 'cruise', request)) {
       throw Boom.unauthorized('User not authorized to retrieve this lowering');
     }
@@ -160,6 +215,7 @@ exports.plugin = {
         const camera = request.params.camera.toLowerCase();
 
         let match = null;
+        let ambiguous = null;
 
         if (lo <= hi) {
           try {
@@ -178,22 +234,36 @@ exports.plugin = {
               auxByEvent.set(key, (auxByEvent.get(key) || []).concat(framegrabsFromAuxData(record)));
             });
 
-            events.sort((a, b) => Math.abs(a.ts - target) - Math.abs(b.ts - target));
+            events.sort(byNearness(target));
 
             for (const event of events) {
-              const framegrab = (auxByEvent.get(event._id.toString()) || [])
-                .find((grab) => grab.filename && cameraAliases(grab.camera_name, grab.filename).has(camera));
+              const framegrabs = (auxByEvent.get(event._id.toString()) || [])
+                .filter((grab) => grab.filename && cameraAliases(grab.camera_name, grab.filename).has(camera));
 
-              if (framegrab) {
-                match = { event, framegrab };
-                break;
+              if (framegrabs.length === 0) {
+                continue;
               }
+
+              // A short name like "port_brow_4k" can cover several framegrabbers.
+              const directories = [...new Set(framegrabs.map((grab) => imageDirectory(grab.filename)))];
+              if (directories.length > 1) {
+                ambiguous = directories;
+              }
+              else {
+                match = { event, framegrab: framegrabs[0] };
+              }
+
+              break;
             }
           }
           catch (err) {
             console.log('ERROR:', err);
             return Boom.serverUnavailable('database error');
           }
+        }
+
+        if (ambiguous) {
+          return Boom.conflict(`${request.params.camera} matches more than one camera in ${lowering.lowering_id}: ${ambiguous.join(', ')}. Use one of those names instead.`);
         }
 
         if (!match) {
@@ -211,7 +281,8 @@ exports.plugin = {
             delta_seconds: (match.event.ts - target) / 1000,
             camera_name: match.framegrab.camera_name,
             filename: match.framegrab.filename,
-            image_path: location
+            image_path: location,
+            server_path: request.path.replace(/\/links\/images\/.*$/, '') + '/files/images/' + encodeFilename(match.framegrab.filename)
           }).code(200);
         }
 
@@ -237,12 +308,18 @@ exports.plugin = {
         notes: '<p>Redirects to the framegrab from the given camera nearest to the given time within the lowering, \
           searching ?tolerance= seconds either side (default 30, max 600). The camera may be given as the camera \
           name ("port_brow_4k"), its image directory ("port_brow_4k.framegrab01") or its full camera_name. \
-          With ?format=json the match is returned as JSON, including how far it is from the requested time.</p>\
-          <p>No authorization required for public lowerings.</p>',
-        tags: ['events', 'api', 'links', 'image_files']
+          If a short camera name covers more than one camera (port_brow_4k on framegrabbers 1 and 2), the response \
+          is 409 and lists the directory names to use instead.</p>\
+          <p>Times are UTC: YYYYMMDD_HHMMSS, YYYYMMDD_HHMMSSmmm, or ISO 8601 (an ISO time with no offset is read as UTC).</p>\
+          <p>With ?format=json the match is returned as JSON, including how far it is from the requested time. \
+          image_path is relative to the request URL (the same as the redirect); server_path is the image path from \
+          this server\'s root.</p>\
+          <p>The lowering\'s access rules decide whether a link resolves. The image files themselves are served \
+          without authorization.</p>',
+        tags: ['api', 'links', 'image_files']
       }
     });
   }
 };
 
-exports.internals = { parseTimestamp, cameraAliases, framegrabsFromAuxData, imagePath };
+exports.internals = { parseTimestamp, cameraAliases, framegrabsFromAuxData, imagePath, byNearness };
