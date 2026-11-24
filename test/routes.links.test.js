@@ -12,7 +12,6 @@ const { internals } = require('../routes/links');
 // 4928 is public (2017-06-14 18:00Z to 2017-06-15 02:00Z) inside public
 // cruise AT37-14; 4930 is hidden.
 const publicLoweringID = '4928';
-const publicLoweringOID = '6981f167212b348aed7fa9f5';
 const hiddenLoweringID = '4930';
 
 const eventIDs = ['7a81f167212b348aed7fa901', '7a81f167212b348aed7fa902'];
@@ -185,55 +184,5 @@ describe('GET /sealog-server/links/images/{lowering_id}/{camera}/{timestamp}', (
     const res = await server.inject(`/sealog-server/links/images/${hiddenLoweringID}/SciCam/20170622_200000`);
 
     expect(res.statusCode).to.equal(401);
-  });
-});
-
-describe('GET /sealog-server/links/lowerings/{lowering_id}', () => {
-  let server;
-  const savedClientURL = process.env.SEALOG_CLIENT_URL;
-
-  beforeEach(async () => {
-
-    server = await initStartedServer();
-  });
-
-  afterEach(async () => {
-
-    if (savedClientURL === undefined) {
-      delete process.env.SEALOG_CLIENT_URL;
-    }
-    else {
-      process.env.SEALOG_CLIENT_URL = savedClientURL;
-    }
-
-    await server.stop();
-  });
-
-  it('returns the client path as JSON when no client URL is configured', async () => {
-
-    delete process.env.SEALOG_CLIENT_URL;
-    const res = await server.inject(`/sealog-server/links/lowerings/${publicLoweringID}`);
-
-    expect(res.statusCode).to.equal(200);
-    expect(res.result.id).to.equal(publicLoweringOID);
-    expect(res.result.client_path).to.equal(`lowering_gallery/${publicLoweringOID}`);
-  });
-
-  it('redirects to the requested client view', async () => {
-
-    process.env.SEALOG_CLIENT_URL = 'https://example.org/sealog-alvin';
-    const res = await server.inject(`/sealog-server/links/lowerings/${publicLoweringID}?view=map`);
-
-    expect(res.statusCode).to.equal(302);
-    expect(res.headers.location).to.equal(`https://example.org/sealog-alvin/lowering_map/${publicLoweringOID}`);
-  });
-
-  it('responds 404 for an unknown lowering and 401 for a hidden one', async () => {
-
-    const missing = await server.inject('/sealog-server/links/lowerings/NOPE-1');
-    expect(missing.statusCode).to.equal(404);
-
-    const hidden = await server.inject(`/sealog-server/links/lowerings/${hiddenLoweringID}`);
-    expect(hidden.statusCode).to.equal(401);
   });
 });

@@ -1,24 +1,15 @@
 ## Stable links
 
-Sealog's own URLs are not predictable from the outside. Client pages are keyed by
-database id (`/lowering_gallery/67aa0b8ed76c52001ae3ae43`), and framegrab files are
-named after the millisecond timestamp of the event that captured them
-(`port_brow_4k.framegrab01.20250210_183242956.jpg`), so a link built from a dive
-name and a whole-second time 404s.
+Framegrab files are named after the millisecond timestamp of the event that
+captured them (`port_brow_4k.framegrab01.20250210_183242956.jpg`), so a link built
+from a dive name, a camera and a whole-second time 404s.
 
-The `/links` routes give outside systems (such as 4DGeo and marine-geo.org) URLs
-built only from names they already have. They redirect to the real page or file.
+The `/links/images` route gives outside systems (such as 4DGeo and marine-geo.org)
+image URLs built only from names they already have, and redirects to the real file.
 
-### A lowering
-
-```
-GET <server>/links/lowerings/{lowering_id}[?view=gallery|map|replay]
-```
-
-Redirects to that view of the lowering in the Sealog client. The client's base URL
-comes from the `SEALOG_CLIENT_URL` environment variable, for example
-`https://seaplay.whoi.edu/sealog-alvin`. Without it, or with `?format=json`, the
-route returns the lowering's id and client path as JSON instead.
+Lowerings already have stable links: the client opens
+`<client>/lowering_gallery/{lowering_id}` (and `lowering_map`, `lowering_replay`)
+by name, e.g. `https://seaplay.whoi.edu/sealog-alvin/lowering_gallery/Alvin-D5295`.
 
 ### A framegrab
 
@@ -48,7 +39,7 @@ https://seaplay.whoi.edu/sealog-alvin/server/links/images/Alvin-D5295/port_brow_
 
 ### Access
 
-Both routes follow the same rules as the lowerings API: public lowerings need no
+The route follows the same rules as the lowerings API: public lowerings need no
 token, and hidden lowerings (or lowerings in a hidden cruise) need an authorized user.
 The image files themselves are served without authentication, as before.
 

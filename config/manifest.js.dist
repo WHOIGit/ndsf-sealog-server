@@ -42,7 +42,7 @@ const swagger_options = {
     },
     {
       name: 'links',
-      description: 'stable links to lowerings and framegrabs'
+      description: 'stable links to framegrabs'
     },
     {
       name: 'lowerings',

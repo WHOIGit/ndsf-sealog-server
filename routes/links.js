@@ -13,17 +13,18 @@ const {
   loweringsTable
 } = require('../config/db_constants');
 
-// Stable, human-readable links into Sealog, keyed by names that outside
+// A stable, human-readable link to a framegrab, keyed by names that outside
 // systems already know (the dive's lowering_id, a camera name, a time)
-// instead of database ids or millisecond-precision filenames.
+// instead of the millisecond-precision filename:
 //
-//   /links/lowerings/{lowering_id}                      -> the dive in the client
 //   /links/images/{lowering_id}/{camera}/{timestamp}    -> the nearest framegrab
+//
+// (Lowerings already have stable links: the client opens
+// /lowering_gallery/{lowering_id} by name.)
 //
 // See docs/stable-links.md.
 
 const FRAMEGRAB_DATA_SOURCE = 'vehicleRealtimeFramegrabberData';
-const LOWERING_VIEWS = ['gallery', 'map', 'replay'];
 
 const DEFAULT_TOLERANCE_SECONDS = 30;
 const MAX_TOLERANCE_SECONDS = 600;
@@ -141,52 +142,6 @@ exports.plugin = {
   name: 'routes-links',
   dependencies: ['hapi-mongodb'],
   register: (server, options) => {
-
-    server.route({
-      method: 'GET',
-      path: '/links/lowerings/{lowering_id}',
-      async handler(request, h) {
-
-        const lowering = await findAccessibleLowering(request);
-
-        const view = request.query.view || 'gallery';
-        const clientPath = `lowering_${view}/${lowering._id}`;
-        const clientURL = process.env.SEALOG_CLIENT_URL;
-
-        if (request.query.format === 'json' || !clientURL) {
-          return h.response({
-            id: lowering._id.toString(),
-            lowering_id: lowering.lowering_id,
-            start_ts: lowering.start_ts,
-            stop_ts: lowering.stop_ts,
-            client_path: clientPath
-          }).code(200);
-        }
-
-        return h.redirect(clientURL.replace(/\/*$/, '/') + clientPath).code(302);
-      },
-      config: {
-        auth: {
-          strategy: 'jwt',
-          mode: 'try'
-        },
-        validate: {
-          params: Joi.object({
-            lowering_id: loweringIdParam
-          }).label('linkLoweringParam'),
-          query: Joi.object({
-            view: Joi.string().valid(...LOWERING_VIEWS).optional(),
-            format: Joi.string().valid('json').optional()
-          }).optional().label('linkLoweringQuery')
-        },
-        description: 'Stable link to a lowering, by its lowering_id',
-        notes: '<p>Redirects to the lowering in the Sealog client (gallery by default; ?view=map or ?view=replay). \
-          The client\'s base URL comes from the SEALOG_CLIENT_URL environment variable; when it is not set, or with \
-          ?format=json, the lowering\'s id and client path are returned as JSON instead.</p>\
-          <p>No authorization required for public lowerings.</p>',
-        tags: ['lowerings', 'api', 'links']
-      }
-    });
 
     server.route({
       method: 'GET',
